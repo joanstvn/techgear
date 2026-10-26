@@ -21,9 +21,10 @@ try:
 except Exception:
     db = client["techgear_db"]
 
-# Colecciones principales para TechGear (Inventario y Pedidos)
+# Colecciones principales para TechGear (Inventario, Pedidos y Usuarios)
 products_collection = db.products
 orders_collection = db.orders
+users_collection = db.users
 
 try:
     # Verificar la conexión con el comando ping

@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class OrderModel(BaseModel):
@@ -10,6 +10,19 @@ class OrderModel(BaseModel):
     total_price: float
     status: str
 
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "customer_name": "Carlos Rodríguez",
+                "customer_email": "carlos.rodriguez@example.com",
+                "product": "Teclado Mecánico RGB",
+                "quantity": 2,
+                "total_price": 159.98,
+                "status": "pendiente",
+            }
+        }
+    )
+
 
 class OrderUpdateModel(BaseModel):
     customer_name: Optional[str] = None
@@ -18,3 +31,11 @@ class OrderUpdateModel(BaseModel):
     quantity: Optional[int] = None
     total_price: Optional[float] = None
     status: Optional[str] = None
+
+    model_config = ConfigDict(
+        json_schema_extra={
+            "example": {
+                "status": "completado",
+            }
+        }
+    )
