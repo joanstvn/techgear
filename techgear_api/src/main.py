@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from src.routes.auth import router as auth_router
 from src.routes.orders import router as orders_router
 from src.routes.products import router as products_router
+from src.routes.users import router as users_router
 
 app = FastAPI(
     title="TechGear API",
@@ -20,8 +22,10 @@ app.add_middleware(
 )
 
 # Rutas principales
+app.include_router(auth_router, prefix="/auth", tags=["Autenticación"])
 app.include_router(products_router, prefix="/products", tags=["Productos"])
 app.include_router(orders_router, prefix="/orders", tags=["Pedidos"])
+app.include_router(users_router, prefix="/users", tags=["Usuarios"])
 
 
 @app.get("/", tags=["Inicio"])

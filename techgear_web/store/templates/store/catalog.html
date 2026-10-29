@@ -1,0 +1,98 @@
+{% extends "store/base.html" %}
+{% load static %}
+
+{% block title %}Catálogo · TechGear{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">Catálogo TechGear</p>
+    <h1>Equipos y periféricos para llevar tu setup al siguiente nivel.</h1>
+    <p class="muted">Explora nuestro inventario disponible y realiza tu pedido en minutos.</p>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <strong>{{ products|length }}</strong>
+      <span>productos</span>
+    </div>
+    <div class="hero-stat">
+      <strong>{{ categories|length }}</strong>
+      <span>categorías</span>
+    </div>
+  </div>
+</section>
+
+<section class="toolbar">
+  <form method="get" class="search-form" role="search">
+    <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M21 21l-4.35-4.35M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <input type="search" name="q" value="{{ query }}" placeholder="Buscar por nombre, categoría o descripción..." aria-label="Buscar productos">
+    {% if selected_category %}
+      <input type="hidden" name="categoria" value="{{ selected_category }}">
+    {% endif %}
+    <button type="submit" class="btn btn-primary">Buscar</button>
+  </form>
+
+  {% if categories %}
+    <div class="chips">
+      <a href="{% url 'store:catalog' %}{% if query %}?q={{ query|urlencode }}{% endif %}"
+         class="chip {% if not selected_category %}active{% endif %}">Todas</a>
+      {% for category in categories %}
+        <a href="{% url 'store:catalog' %}?categoria={{ category|urlencode }}{% if query %}&q={{ query|urlencode }}{% endif %}"
+           class="chip {% if selected_category == category %}active{% endif %}">{{ category }}</a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+
+{% if products %}
+  <section class="product-grid">
+    {% for product in products %}
+      <article class="product-card">
+        <a class="product-media" href="{% url 'store:product_detail' product.id %}">
+          {% if product.image %}
+            <img src="{{ product.image }}" alt="{{ product.name }}" loading="lazy"
+                 onerror="this.src='{% static 'store/img/placeholder.svg' %}'">
+          {% else %}
+            <img src="{% static 'store/img/placeholder.svg' %}" alt="{{ product.name }}" loading="lazy">
+          {% endif %}
+          <span class="badge badge-category">{{ product.category }}</span>
+        </a>
+        <div class="product-body">
+          <h2 class="product-name">
+            <a href="{% url 'store:product_detail' product.id %}">{{ product.name }}</a>
+          </h2>
+          <p class="product-desc">{{ product.description|truncatechars:88 }}</p>
+          <div class="product-footer">
+            <span class="price">${{ product.price|floatformat:2 }}</span>
+            {% if product.stock|add:"0" <= 0 %}
+              <span class="badge badge-danger">Agotado</span>
+            {% elif product.stock|add:"0" < 5 %}
+              <span class="badge badge-warning">Últimas {{ product.stock }}</span>
+            {% else %}
+              <span class="badge badge-success">{{ product.stock }} disponibles</span>
+            {% endif %}
+          </div>
+          <a class="btn btn-secondary btn-block" href="{% url 'store:product_detail' product.id %}">Ver detalle</a>
+        </div>
+      </article>
+    {% endfor %}
+  </section>
+{% else %}
+  <section class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h2>No encontramos productos</h2>
+    <p class="muted">
+      {% if query or selected_category %}
+        Prueba con otra búsqueda o cambia de categoría.
+      {% else %}
+        El catálogo aún no tiene productos registrados.
+      {% endif %}
+    </p>
+    {% if query or selected_category %}
+      <a class="btn btn-primary" href="{% url 'store:catalog' %}">Ver todo el catálogo</a>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

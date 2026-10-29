@@ -1,0 +1,84 @@
+{% extends "store/base.html" %}
+{% load static %}
+
+{% block title %}{{ product.name }} · TechGear{% endblock %}
+
+{% block content %}
+<nav class="breadcrumb" aria-label="Ruta de navegación">
+  <a href="{% url 'store:catalog' %}">Catálogo</a>
+  <span>/</span>
+  <a href="{% url 'store:catalog' %}?categoria={{ product.category|urlencode }}">{{ product.category }}</a>
+  <span>/</span>
+  <span class="current">{{ product.name }}</span>
+</nav>
+
+<section class="detail-grid">
+  <div class="detail-media">
+    {% if product.image %}
+      <img src="{{ product.image }}" alt="{{ product.name }}"
+           onerror="this.src='{% static 'store/img/placeholder.svg' %}'">
+    {% else %}
+      <img src="{% static 'store/img/placeholder.svg' %}" alt="{{ product.name }}">
+    {% endif %}
+  </div>
+
+  <div class="detail-info">
+    <span class="badge badge-category">{{ product.category }}</span>
+    <h1>{{ product.name }}</h1>
+
+    <div class="detail-price-row">
+      <span class="price price-lg">${{ product.price|floatformat:2 }}</span>
+      {% if product.stock|add:"0" <= 0 %}
+        <span class="badge badge-danger">Agotado</span>
+      {% elif product.stock|add:"0" < 5 %}
+        <span class="badge badge-warning">Últimas {{ product.stock }} unidades</span>
+      {% else %}
+        <span class="badge badge-success">{{ product.stock }} en stock</span>
+      {% endif %}
+    </div>
+
+    <p class="detail-description">{{ product.description }}</p>
+
+    <dl class="detail-specs">
+      <div><dt>Disponibilidad</dt><dd>{{ product.stock }} unidades</dd></div>
+      <div><dt>Referencia</dt><dd class="mono">{{ product.id }}</dd></div>
+    </dl>
+
+    {% if product.stock|add:"0" > 0 %}
+      <div class="order-card">
+        <h2>Realizar pedido</h2>
+        <p class="muted">Completa tus datos y confirma la cantidad que deseas.</p>
+
+        <form method="post" action="{% url 'store:create_order' product.id %}">
+          {% csrf_token %}
+          <div class="form-row">
+            <div class="form-group">
+              <label for="{{ form.customer_name.id_for_label }}">{{ form.customer_name.label }}</label>
+              {{ form.customer_name }}
+              {% for error in form.customer_name.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            </div>
+            <div class="form-group">
+              <label for="{{ form.customer_email.id_for_label }}">{{ form.customer_email.label }}</label>
+              {{ form.customer_email }}
+              {% for error in form.customer_email.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            </div>
+          </div>
+
+          <div class="form-row form-row-bottom">
+            <div class="form-group">
+              <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}</label>
+              {{ form.quantity }}
+              {% for error in form.quantity.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg">Confirmar pedido</button>
+          </div>
+        </form>
+      </div>
+    {% else %}
+      <div class="alert alert-warning">Este producto se encuentra agotado por el momento.</div>
+    {% endif %}
+
+    <a class="back-link" href="{% url 'store:catalog' %}">&larr; Volver al catálogo</a>
+  </div>
+</section>
+{% endblock %}

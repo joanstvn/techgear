@@ -1,0 +1,35 @@
+{% extends "store/base.html" %}
+
+{% block title %}{% block panel_title %}Panel{% endblock %} · TechGear{% endblock %}
+
+{% block content %}
+<div class="panel-layout">
+  <aside class="panel-sidebar">
+    <p class="panel-sidebar-title">Gestión</p>
+    <nav class="panel-nav">
+      <a href="{% url 'store:panel' %}" class="{% if request.resolver_match.url_name == 'panel' or request.resolver_match.url_name == 'product_create' or request.resolver_match.url_name == 'product_edit' %}active{% endif %}">
+        <span class="panel-nav-icon">▦</span> Catálogo
+      </a>
+      {% if is_admin %}
+        <a href="{% url 'store:panel_admin' %}" class="{% if request.resolver_match.url_name == 'panel_admin' %}active{% endif %}">
+          <span class="panel-nav-icon">◈</span> Resumen
+        </a>
+        <a href="{% url 'store:users' %}" class="{% if request.resolver_match.url_name == 'users' or request.resolver_match.url_name == 'user_create' or request.resolver_match.url_name == 'user_edit' %}active{% endif %}">
+          <span class="panel-nav-icon">◉</span> Usuarios
+        </a>
+        <a href="{% url 'store:orders' %}" class="{% if request.resolver_match.url_name == 'orders' %}active{% endif %}">
+          <span class="panel-nav-icon">▤</span> Pedidos
+        </a>
+      {% endif %}
+    </nav>
+
+    <div class="panel-sidebar-footer">
+      <a href="{% url 'store:catalog' %}" class="btn btn-ghost btn-sm btn-block">Ver catálogo público</a>
+    </div>
+  </aside>
+
+  <section class="panel-content">
+    {% block panel_content %}{% endblock %}
+  </section>
+</div>
+{% endblock %}

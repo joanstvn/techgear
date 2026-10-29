@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TechGear{% endblock %}</title>
+  <meta name="description" content="TechGear: catálogo de tecnología, periféricos y accesorios.">
+  <link rel="stylesheet" href="{% static 'store/css/style.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{% url 'store:catalog' %}">
+        <span class="brand-mark">TG</span>
+        <span class="brand-text">Tech<strong>Gear</strong></span>
+      </a>
+
+      <button class="nav-toggle" type="button" data-nav-toggle aria-label="Abrir menú">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="main-nav" data-nav>
+        <a href="{% url 'store:catalog' %}"
+           class="nav-link {% if request.resolver_match.url_name == 'catalog' %}active{% endif %}">
+          Catálogo
+        </a>
+
+        {% if session_user %}
+          {% if is_admin %}
+            <a href="{% url 'store:panel' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'panel' %}active{% endif %}">
+              Panel catálogo
+            </a>
+            <a href="{% url 'store:panel_admin' %}"
+               class="nav-link {% if request.resolver_match.url_name == 'panel_admin' or request.resolver_match.url_name == 'users' or request.resolver_match.url_name == 'orders' %}active{% endif %}">
+              Panel admin
+            </a>
+          {% endif %}
+
+          <div class="user-chip" title="{{ session_user.email }}">
+            <span class="avatar">{{ session_user.username|slice:":1"|upper }}</span>
+            <span class="user-meta">
+              <strong>{{ session_user.full_name|default:session_user.username }}</strong>
+              <small>{{ session_user.role|capfirst }}</small>
+            </span>
+          </div>
+
+          <a href="{% url 'store:logout' %}" class="btn btn-ghost btn-sm">Cerrar sesión</a>
+        {% else %}
+          <a href="{% url 'store:login' %}" class="btn btn-primary btn-sm">Iniciar sesión</a>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  {% if messages %}
+    <div class="container messages">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">
+          <span>{{ message }}</span>
+          <button type="button" class="alert-close" data-dismiss aria-label="Cerrar">&times;</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main class="{% block main_class %}container page{% endblock %}">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div>
+        <span class="brand-mark brand-mark-sm">TG</span>
+        <strong>TechGear</strong>
+        <p class="muted">Tecnología que impulsa tu día a día.</p>
+      </div>
+      <p class="muted">&copy; {% now "Y" %} TechGear. Todos los derechos reservados.</p>
+    </div>
+  </footer>
+
+  <script src="{% static 'store/js/main.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

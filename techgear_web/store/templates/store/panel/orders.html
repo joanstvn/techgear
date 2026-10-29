@@ -1,0 +1,72 @@
+{% extends "store/panel/panel_base.html" %}
+
+{% block panel_title %}Pedidos{% endblock %}
+
+{% block panel_content %}
+<header class="panel-header">
+  <div>
+    <p class="eyebrow">Panel de administración</p>
+    <h1>Pedidos</h1>
+    <p class="muted">Consulta y actualiza el estado de los pedidos recibidos.</p>
+  </div>
+</header>
+
+{% if orders %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Producto</th>
+          <th>Cantidad</th>
+          <th>Total</th>
+          <th>Estado</th>
+          <th class="actions-col">Actualizar</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for order in orders %}
+          <tr>
+            <td>
+              <strong>{{ order.customer_name }}</strong>
+              <small class="muted">{{ order.customer_email }}</small>
+            </td>
+            <td>{{ order.product }}</td>
+            <td class="mono">{{ order.quantity }}</td>
+            <td class="mono">${{ order.total_price|floatformat:2 }}</td>
+            <td>
+              {% if order.status == 'pendiente' %}
+                <span class="badge badge-warning">Pendiente</span>
+              {% elif order.status == 'completado' %}
+                <span class="badge badge-success">Completado</span>
+              {% elif order.status == 'cancelado' %}
+                <span class="badge badge-danger">Cancelado</span>
+              {% else %}
+                <span class="badge badge-status">{{ order.status|capfirst }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="{% url 'store:order_update_status' order.id %}" class="status-form">
+                {% csrf_token %}
+                <select name="status" class="status-select" aria-label="Estado del pedido">
+                  {% for value, label in status_form.fields.status.choices %}
+                    <option value="{{ value }}" {% if value == order.status %}selected{% endif %}>{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-secondary btn-sm">Guardar</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">▤</div>
+    <h2>No hay pedidos registrados</h2>
+    <p class="muted">Los pedidos realizados desde el catálogo aparecerán aquí.</p>
+    <a class="btn btn-primary" href="{% url 'store:catalog' %}">Ir al catálogo</a>
+  </div>
+{% endif %}
+{% endblock %}

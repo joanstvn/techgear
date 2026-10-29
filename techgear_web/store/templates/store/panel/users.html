@@ -1,0 +1,73 @@
+{% extends "store/panel/panel_base.html" %}
+
+{% block panel_title %}Usuarios{% endblock %}
+
+{% block panel_content %}
+<header class="panel-header">
+  <div>
+    <p class="eyebrow">Panel de administración</p>
+    <h1>Usuarios</h1>
+    <p class="muted">Gestiona las cuentas y los roles del sistema.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'store:user_create' %}">+ Nuevo usuario</a>
+</header>
+
+{% if users %}
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Correo</th>
+          <th>Rol</th>
+          <th class="actions-col">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td>
+              <div class="table-user">
+                <span class="avatar avatar-sm">{{ user.username|slice:":1"|upper }}</span>
+                <div>
+                  <strong>{{ user.full_name|default:user.username }}</strong>
+                  <small class="mono">@{{ user.username }}</small>
+                </div>
+              </div>
+            </td>
+            <td>{{ user.email }}</td>
+            <td>
+              {% if user.role == 'administrador' or user.role == 'admin' %}
+                <span class="badge badge-role-admin">Administrador</span>
+              {% else %}
+                <span class="badge badge-role-client">Cliente</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="table-actions">
+                <a class="btn btn-ghost btn-sm" href="{% url 'store:user_edit' user.id %}">Editar</a>
+                {% if user.id == current_user_id %}
+                  <span class="badge badge-self">Tu cuenta</span>
+                {% else %}
+                  <form method="post" action="{% url 'store:user_delete' user.id %}"
+                        onsubmit="return confirm('¿Eliminar al usuario {{ user.username|escapejs }}?');">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-sm">Eliminar</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="empty-icon">◉</div>
+    <h2>No hay usuarios registrados</h2>
+    <p class="muted">Crea el primer usuario para comenzar.</p>
+    <a class="btn btn-primary" href="{% url 'store:user_create' %}">+ Nuevo usuario</a>
+  </div>
+{% endif %}
+{% endblock %}

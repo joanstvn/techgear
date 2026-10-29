@@ -1,0 +1,97 @@
+{% extends "store/panel/panel_base.html" %}
+
+{% block panel_title %}Panel de administración{% endblock %}
+
+{% block panel_content %}
+<header class="panel-header">
+  <div>
+    <p class="eyebrow">Panel de administración</p>
+    <h1>Resumen general</h1>
+    <p class="muted">Estado actual de la tienda TechGear.</p>
+  </div>
+  <a class="btn btn-primary" href="{% url 'store:panel' %}">Gestionar catálogo</a>
+</header>
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <span class="stat-icon stat-icon-blue">▦</span>
+    <div>
+      <strong>{{ stats.products }}</strong>
+      <span>Productos</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <span class="stat-icon stat-icon-violet">◉</span>
+    <div>
+      <strong>{{ stats.users }}</strong>
+      <span>Usuarios</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <span class="stat-icon stat-icon-green">▤</span>
+    <div>
+      <strong>{{ stats.orders }}</strong>
+      <span>Pedidos</span>
+    </div>
+  </article>
+  <article class="stat-card">
+    <span class="stat-icon stat-icon-orange">◔</span>
+    <div>
+      <strong>{{ stats.pending }}</strong>
+      <span>Pendientes</span>
+    </div>
+  </article>
+</section>
+
+<div class="panel-columns">
+  <section class="panel-block">
+    <header class="panel-block-header">
+      <h2>Últimos pedidos</h2>
+      <a href="{% url 'store:orders' %}">Ver todos</a>
+    </header>
+
+    {% if recent_orders %}
+      <div class="table-wrapper">
+        <table class="data-table data-table-compact">
+          <thead>
+            <tr><th>Cliente</th><th>Producto</th><th>Total</th><th>Estado</th></tr>
+          </thead>
+          <tbody>
+            {% for order in recent_orders %}
+              <tr>
+                <td>
+                  <strong>{{ order.customer_name }}</strong>
+                  <small class="muted">{{ order.customer_email }}</small>
+                </td>
+                <td>{{ order.product }} <span class="muted">x{{ order.quantity }}</span></td>
+                <td class="mono">${{ order.total_price|floatformat:2 }}</td>
+                <td><span class="badge badge-status">{{ order.status|capfirst }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted panel-empty">Todavía no hay pedidos registrados.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel-block">
+    <header class="panel-block-header"><h2>Accesos rápidos</h2></header>
+    <div class="quick-links">
+      <a href="{% url 'store:product_create' %}">
+        <span class="quick-icon">+</span>
+        <span><strong>Nuevo producto</strong><small>Agregar al inventario</small></span>
+      </a>
+      <a href="{% url 'store:user_create' %}">
+        <span class="quick-icon">◉</span>
+        <span><strong>Nuevo usuario</strong><small>Crear una cuenta</small></span>
+      </a>
+      <a href="{% url 'store:orders' %}">
+        <span class="quick-icon">▤</span>
+        <span><strong>Ver pedidos</strong><small>Actualizar estados</small></span>
+      </a>
+    </div>
+  </section>
+</div>
+{% endblock %}

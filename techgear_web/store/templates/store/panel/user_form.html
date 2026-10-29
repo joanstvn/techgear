@@ -1,0 +1,62 @@
+{% extends "store/panel/panel_base.html" %}
+
+{% block panel_title %}{{ title }}{% endblock %}
+
+{% block panel_content %}
+<header class="panel-header">
+  <div>
+    <p class="eyebrow">Panel de administración</p>
+    <h1>{{ title }}</h1>
+    <p class="muted">Completa la información de la cuenta.</p>
+  </div>
+  <a class="btn btn-ghost" href="{% url 'store:users' %}">&larr; Volver</a>
+</header>
+
+<div class="form-card">
+  {% if form.non_field_errors %}
+    <div class="alert alert-error">{{ form.non_field_errors.0 }}</div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+        {{ form.username }}
+        {% for error in form.username.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+        {{ form.email }}
+        {% for error in form.email.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="{{ form.full_name.id_for_label }}">{{ form.full_name.label }}</label>
+        {{ form.full_name }}
+        {% for error in form.full_name.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="form-group">
+        <label for="{{ form.role.id_for_label }}">{{ form.role.label }}</label>
+        {{ form.role }}
+        {% for error in form.role.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+      {{ form.password }}
+      <small class="muted">{{ form.password.help_text }}</small>
+      {% for error in form.password.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{% url 'store:users' %}">Cancelar</a>
+      <button type="submit" class="btn btn-primary">{{ submit_label }}</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
