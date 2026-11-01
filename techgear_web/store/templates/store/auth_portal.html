@@ -1,0 +1,32 @@
+{% extends "store/auth_base.html" %}
+{% load store_tags %}
+
+{% block title %}Portal TechGear · Acceso{% endblock %}
+
+{% block content %}
+<h1 class="auth__title">Portal TechGear</h1>
+<p class="auth__subtitle">Accede para comprar robots y consultar tus pedidos.</p>
+
+<div class="auth__portal-actions">
+  <a class="btn auth__portal-btn auth__portal-btn--primary" href="{% url 'store:login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">
+    {% icon "arrow_forward" %}
+    Iniciar sesión
+  </a>
+  <a class="auth__portal-btn auth__portal-btn--secondary" href="{% url 'store:register' %}">
+    {% icon "person_add" %}
+    Crear cuenta
+  </a>
+
+  <div class="auth__portal-divider" aria-hidden="true"><span>o</span></div>
+
+  <button class="auth__portal-btn auth__portal-btn--secondary" type="button" data-google-unavailable aria-describedby="google-auth-notice">
+    <span class="auth__google-mark" aria-hidden="true">G</span>
+    Continuar con Google
+  </button>
+  <p class="auth__google-notice" id="google-auth-notice" data-google-auth-message role="status" hidden>
+    El acceso con Google aún no está configurado.
+  </p>
+</div>
+
+<p class="auth__portal-terms">Al continuar, aceptas las condiciones de uso y la política de privacidad de TechGear.</p>
+{% endblock %}

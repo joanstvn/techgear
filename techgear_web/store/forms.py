@@ -1,4 +1,7 @@
+import hashlib
+
 from django import forms
+from django.utils.text import slugify
 
 INPUT_CLASS = "form-input"
 SELECT_CLASS = "form-select"
@@ -7,12 +10,11 @@ TEXTAREA_CLASS = "form-textarea"
 
 class LoginForm(forms.Form):
     username = forms.CharField(
-        label="Usuario o correo electrónico",
+        label="Correo o usuario",
         max_length=150,
         widget=forms.TextInput(
             attrs={
                 "class": INPUT_CLASS,
-                "placeholder": "admin@techgear.com",
                 "autocomplete": "username",
                 "autofocus": True,
             }
@@ -23,11 +25,77 @@ class LoginForm(forms.Form):
         widget=forms.PasswordInput(
             attrs={
                 "class": INPUT_CLASS,
-                "placeholder": "••••••••",
                 "autocomplete": "current-password",
             }
         ),
     )
+
+
+class RegisterForm(forms.Form):
+    full_name = forms.CharField(
+        label="Nombre",
+        max_length=120,
+        widget=forms.TextInput(attrs={"class": INPUT_CLASS, "autocomplete": "name"}),
+    )
+    email = forms.EmailField(
+        label="Correo",
+        widget=forms.EmailInput(attrs={"class": INPUT_CLASS, "autocomplete": "email"}),
+    )
+    password = forms.CharField(
+        label="Contraseña",
+        min_length=8,
+        max_length=128,
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "autocomplete": "new-password"}),
+    )
+    password_confirm = forms.CharField(
+        label="Confirmar contraseña",
+        min_length=8,
+        max_length=128,
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "autocomplete": "new-password"}),
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        password_confirm = cleaned_data.get("password_confirm")
+        if password and password_confirm and password != password_confirm:
+            self.add_error("password_confirm", "Las contraseñas no coinciden.")
+
+        email = cleaned_data.get("email")
+        if email:
+            local_part = email.rsplit("@", 1)[0]
+            username_base = slugify(local_part).replace("-", "")[:30] or "cliente"
+            email_suffix = hashlib.sha1(email.lower().encode("utf-8")).hexdigest()[:7]
+            cleaned_data["username"] = f"{username_base}_{email_suffix}"[:40]
+        return cleaned_data
+
+
+class PasswordResetRequestForm(forms.Form):
+    email = forms.EmailField(
+        label="Correo",
+        widget=forms.EmailInput(attrs={"class": INPUT_CLASS, "autocomplete": "email", "autofocus": True}),
+    )
+
+
+class SetPasswordForm(forms.Form):
+    password = forms.CharField(
+        label="Nueva contraseña",
+        min_length=8,
+        max_length=128,
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "Mínimo 8 caracteres", "autocomplete": "new-password"}),
+    )
+    password_confirm = forms.CharField(
+        label="Confirma tu contraseña",
+        min_length=8,
+        max_length=128,
+        widget=forms.PasswordInput(attrs={"class": INPUT_CLASS, "placeholder": "Repite tu contraseña", "autocomplete": "new-password"}),
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("password") != cleaned_data.get("password_confirm"):
+            self.add_error("password_confirm", "Las contraseñas no coinciden.")
+        return cleaned_data
 
 
 class ProductForm(forms.Form):

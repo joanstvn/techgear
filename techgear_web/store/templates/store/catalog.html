@@ -1,37 +1,48 @@
 {% extends "store/base.html" %}
+{% load store_tags %}
 {% load static %}
 
 {% block title %}Catálogo · TechGear{% endblock %}
+{% block body_class %}catalog-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/catalog_auth.css' %}">{% endblock %}
 
 {% block content %}
-<section class="hero">
-  <div class="hero-copy">
-    <p class="eyebrow">Catálogo TechGear</p>
-    <h1>Equipos y periféricos para llevar tu setup al siguiente nivel.</h1>
-    <p class="muted">Explora nuestro inventario disponible y realiza tu pedido en minutos.</p>
-  </div>
-  <div class="hero-stats">
-    <div class="hero-stat">
-      <strong>{{ products|length }}</strong>
-      <span>productos</span>
+<section class="catalog-hero">
+  <div class="container catalog-hero__inner">
+    <div class="catalog-hero__copy reveal">
+      <p class="eyebrow">Catálogo TechGear</p>
+      <h1>Encuentra tu próximo <span class="text-gradient">upgrade</span>.</h1>
+      <p class="catalog-hero__lead">
+        Periféricos, equipos y accesorios con disponibilidad en tiempo real.
+        Filtra, compara y registra tu pedido en minutos.
+      </p>
     </div>
-    <div class="hero-stat">
-      <strong>{{ categories|length }}</strong>
-      <span>categorías</span>
+
+    <div class="catalog-hero__stats reveal">
+      <div class="mini-stat">
+        <strong>{{ products|length }}</strong>
+        <span>productos</span>
+      </div>
+      <div class="mini-stat">
+        <strong>{{ categories|length }}</strong>
+        <span>categorías</span>
+      </div>
+      <div class="mini-stat">
+        <strong>24/7</strong>
+        <span>compra en línea</span>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="toolbar">
+<section class="toolbar container">
   <form method="get" class="search-form" role="search">
-    <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M21 21l-4.35-4.35M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    </svg>
+    {% icon "search" "search-icon" %}
     <input type="search" name="q" value="{{ query }}" placeholder="Buscar por nombre, categoría o descripción..." aria-label="Buscar productos">
     {% if selected_category %}
       <input type="hidden" name="categoria" value="{{ selected_category }}">
     {% endif %}
-    <button type="submit" class="btn btn-primary">Buscar</button>
+    <button type="submit" class="btn">Buscar</button>
   </form>
 
   {% if categories %}
@@ -46,53 +57,65 @@
   {% endif %}
 </section>
 
-{% if products %}
-  <section class="product-grid">
-    {% for product in products %}
-      <article class="product-card">
-        <a class="product-media" href="{% url 'store:product_detail' product.id %}">
-          {% if product.image %}
-            <img src="{{ product.image }}" alt="{{ product.name }}" loading="lazy"
-                 onerror="this.src='{% static 'store/img/placeholder.svg' %}'">
-          {% else %}
-            <img src="{% static 'store/img/placeholder.svg' %}" alt="{{ product.name }}" loading="lazy">
-          {% endif %}
-          <span class="badge badge-category">{{ product.category }}</span>
-        </a>
-        <div class="product-body">
-          <h2 class="product-name">
-            <a href="{% url 'store:product_detail' product.id %}">{{ product.name }}</a>
-          </h2>
-          <p class="product-desc">{{ product.description|truncatechars:88 }}</p>
-          <div class="product-footer">
-            <span class="price">${{ product.price|floatformat:2 }}</span>
-            {% if product.stock|add:"0" <= 0 %}
-              <span class="badge badge-danger">Agotado</span>
-            {% elif product.stock|add:"0" < 5 %}
-              <span class="badge badge-warning">Últimas {{ product.stock }}</span>
+<section class="container catalog-results">
+  {% if products %}
+    <div class="results-meta">
+      <span>{{ products|length }} resultado{{ products|length|pluralize }} para ti</span>
+      {% if query %}<span class="muted">Búsqueda: “{{ query }}”</span>{% endif %}
+    </div>
+
+    <div class="product-grid">
+      {% for product in products %}
+        <article class="product-card reveal">
+          <a class="product-media" href="{% url 'store:product_detail' product.id %}">
+            {% if product.image %}
+              <img src="{{ product.image }}" alt="{{ product.name }}" loading="lazy"
+                   onerror="this.src='{% static 'store/img/placeholder.svg' %}'">
             {% else %}
-              <span class="badge badge-success">{{ product.stock }} disponibles</span>
+              <img src="{% static 'store/img/placeholder.svg' %}" alt="{{ product.name }}" loading="lazy">
             {% endif %}
+            <span class="badge badge-category">{{ product.category }}</span>
+          </a>
+          <div class="product-body">
+            <h2 class="product-name">
+              <a href="{% url 'store:product_detail' product.id %}">{{ product.name }}</a>
+            </h2>
+            <p class="product-desc">{{ product.description|truncatechars:88 }}</p>
+            <div class="product-footer">
+              <span class="price">${{ product.price|floatformat:2 }}</span>
+              {% if product.stock|add:"0" <= 0 %}
+                <span class="badge badge-danger">Agotado</span>
+              {% elif product.stock|add:"0" < 5 %}
+                <span class="badge badge-warning">Últimas {{ product.stock }}</span>
+              {% else %}
+                <span class="badge badge-success">{{ product.stock }} disponibles</span>
+              {% endif %}
+            </div>
+            <a class="btn btn-secondary btn-block" href="{% url 'store:product_detail' product.id %}">
+              Ver detalle
+              {% icon "arrow_forward" %}
+            </a>
           </div>
-          <a class="btn btn-secondary btn-block" href="{% url 'store:product_detail' product.id %}">Ver detalle</a>
-        </div>
-      </article>
-    {% endfor %}
-  </section>
-{% else %}
-  <section class="empty-state">
-    <div class="empty-icon">🔍</div>
-    <h2>No encontramos productos</h2>
-    <p class="muted">
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">
+        {% icon "search_off" %}
+      </div>
+      <h2>No encontramos productos</h2>
+      <p class="muted">
+        {% if query or selected_category %}
+          Prueba con otra búsqueda o cambia de categoría.
+        {% else %}
+          El catálogo aún no tiene productos registrados.
+        {% endif %}
+      </p>
       {% if query or selected_category %}
-        Prueba con otra búsqueda o cambia de categoría.
-      {% else %}
-        El catálogo aún no tiene productos registrados.
+        <a class="btn" href="{% url 'store:catalog' %}">Ver todo el catálogo</a>
       {% endif %}
-    </p>
-    {% if query or selected_category %}
-      <a class="btn btn-primary" href="{% url 'store:catalog' %}">Ver todo el catálogo</a>
-    {% endif %}
-  </section>
-{% endif %}
+    </div>
+  {% endif %}
+</section>
 {% endblock %}

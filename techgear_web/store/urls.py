@@ -10,7 +10,11 @@ urlpatterns = [
     path("producto/<str:id>/", views.product_detail, name="product_detail"),
     path("producto/<str:id>/pedido/", views.create_order, name="create_order"),
     # Autenticación
+    path("acceso/", views.auth_portal_view, name="auth_portal"),
     path("login/", views.login_view, name="login"),
+    path("registro/", views.register_view, name="register"),
+    path("password/forgot/", views.password_reset_request_view, name="password_reset_request"),
+    path("password/reset/", views.password_reset_confirm_view, name="password_reset_confirm"),
     path("logout/", views.logout_view, name="logout"),
     # Panel de catálogo
     path("panel/", views.panel_catalog, name="panel"),

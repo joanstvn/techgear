@@ -93,6 +93,10 @@ def login(username: str, password: str) -> dict:
     )
 
 
+def register(data: dict) -> dict:
+    return _request("POST", "/auth/register", json=data)
+
+
 def get_me(token: str) -> dict:
     return _request("GET", "/auth/me", token=token)
 

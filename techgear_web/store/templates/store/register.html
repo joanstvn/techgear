@@ -1,0 +1,26 @@
+{% extends "store/auth_base.html" %}
+{% load store_tags %}
+
+{% block title %}Crear cuenta · TechGear{% endblock %}
+
+{% block content %}
+<h1 class="auth__title">Crear cuenta</h1>
+<p class="auth__subtitle">Completa tus datos para registrarte.</p>
+
+{% if form.non_field_errors %}<div class="alert alert-error auth__alert">{{ form.non_field_errors.0 }}</div>{% endif %}
+<form class="auth__form" method="post" novalidate>
+  {% csrf_token %}
+  {% for field in form %}
+    <div class="auth__field">
+      <label for="{{ field.id_for_label }}" class="auth__label">{{ field.label }}</label>
+      <div class="auth__input-wrap">
+        {{ field }}
+        {% if field.name == "password" or field.name == "password_confirm" %}<button type="button" class="auth__toggle-pw" data-toggle-password aria-label="Mostrar contraseña">{% icon "visibility" %}</button>{% endif %}
+      </div>
+      {% for error in field.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+    </div>
+  {% endfor %}
+  <button type="submit" class="btn auth__submit-btn">Crear cuenta {% icon "arrow_forward" %}</button>
+</form>
+<p class="auth__switch">¿Ya tienes cuenta? <a class="auth__switch-link" href="{% url 'store:login' %}">Iniciar sesión</a></p>
+{% endblock %}

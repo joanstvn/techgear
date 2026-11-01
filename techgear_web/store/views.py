@@ -14,7 +14,10 @@ from store.forms import (
     LoginForm,
     OrderForm,
     OrderStatusForm,
+    PasswordResetRequestForm,
     ProductForm,
+    RegisterForm,
+    SetPasswordForm,
     UserForm,
 )
 
@@ -41,6 +44,14 @@ def _safe_next_url(request) -> str | None:
 
 
 # Autenticación
+
+
+def auth_portal_view(request):
+    return render(
+        request,
+        "store/auth_portal.html",
+        {"next": _safe_next_url(request) or ""},
+    )
 
 
 def login_view(request):
@@ -77,6 +88,36 @@ def login_view(request):
             return redirect("store:panel" if request.session["is_admin"] else "store:catalog")
 
     return render(request, "store/login.html", {"form": form, "next": _safe_next_url(request) or ""})
+
+
+def register_view(request):
+    form = RegisterForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            registration_data = {
+                key: value
+                for key, value in form.cleaned_data.items()
+                if key != "password_confirm"
+            }
+            api.register(registration_data)
+        except api.ApiError as error:
+            form.add_error(None, error.message)
+        else:
+            messages.success(request, "Tu cuenta quedó creada. Inicia sesión para continuar.")
+            return redirect("store:login")
+    return render(request, "store/register.html", {"form": form})
+
+
+def password_reset_request_view(request):
+    return render(request, "store/password_reset_request.html", {"form": PasswordResetRequestForm()})
+
+
+def password_reset_confirm_view(request):
+    return render(
+        request,
+        "store/password_reset_confirm.html",
+        {"form": SetPasswordForm(), "token": request.GET.get("token", "")},
+    )
 
 
 def logout_view(request):

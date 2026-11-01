@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class LoginModel(BaseModel):
@@ -16,6 +16,13 @@ class LoginModel(BaseModel):
             }
         }
     )
+
+
+class RegisterModel(BaseModel):
+    username: str = Field(..., min_length=3, max_length=40)
+    email: EmailStr
+    full_name: str = Field(..., min_length=2, max_length=120)
+    password: str = Field(..., min_length=8, max_length=128)
 
 
 class TokenModel(BaseModel):

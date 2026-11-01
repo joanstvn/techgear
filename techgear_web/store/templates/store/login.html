@@ -1,61 +1,44 @@
-{% extends "store/base.html" %}
-
+{% extends "store/auth_base.html" %}
+{% load store_tags %}
 {% block title %}Iniciar sesión · TechGear{% endblock %}
-{% block main_class %}auth-page{% endblock %}
 
 {% block content %}
-<section class="auth-shell">
-  <div class="auth-visual">
-    <a class="brand brand-light" href="{% url 'store:catalog' %}">
-      <span class="brand-mark">TG</span>
-      <span class="brand-text">Tech<strong>Gear</strong></span>
-    </a>
-    <div class="auth-visual-content">
-      <p class="eyebrow">Panel de administración</p>
-      <h1>Gestiona tu catálogo y tus pedidos en un solo lugar.</h1>
-      <p>Accede con tus credenciales para administrar productos, usuarios y el estado de cada pedido.</p>
-      <ul class="auth-features">
-        <li>Control total del inventario</li>
-        <li>Seguimiento de pedidos en tiempo real</li>
-        <li>Gestión de usuarios y roles</li>
-      </ul>
+<h1 class="auth__title">Iniciar sesión</h1>
+<p class="auth__subtitle">Ingresa tus credenciales para continuar.</p>
+
+{% if form.non_field_errors %}
+  <div class="alert alert-error auth__alert">{{ form.non_field_errors.0 }}</div>
+{% endif %}
+
+<form class="auth__form" method="post" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ next }}">
+
+  <div class="auth__field">
+    <label for="{{ form.username.id_for_label }}" class="auth__label">{{ form.username.label }}</label>
+    <div class="auth__input-wrap">
+      {{ form.username }}
     </div>
-    <p class="auth-visual-foot">Sesión protegida con tokens JWT.</p>
+    {% for error in form.username.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
   </div>
 
-  <div class="auth-form-panel">
-    <div class="auth-form-card">
-      <p class="eyebrow">Bienvenido</p>
-      <h2>Iniciar sesión</h2>
-      <p class="muted">Ingresa tus credenciales de TechGear.</p>
-
-      {% if form.non_field_errors %}
-        <div class="alert alert-error">{{ form.non_field_errors.0 }}</div>
-      {% endif %}
-
-      <form method="post" novalidate>
-        {% csrf_token %}
-        <input type="hidden" name="next" value="{{ next }}">
-
-        <div class="form-group">
-          <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
-          {{ form.username }}
-          {% for error in form.username.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
-        </div>
-
-        <div class="form-group">
-          <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
-          {{ form.password }}
-          {% for error in form.password.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block btn-lg">Entrar</button>
-      </form>
-
-      <p class="auth-back">
-        <a href="{% url 'store:catalog' %}">&larr; Volver al catálogo</a>
-      </p>
+  <div class="auth__field">
+    <label for="{{ form.password.id_for_label }}" class="auth__label">{{ form.password.label }}</label>
+    <div class="auth__input-wrap">
+      {{ form.password }}
+      <button type="button" class="auth__toggle-pw" data-toggle-password aria-label="Mostrar contraseña">
+        {% icon "visibility" %}
+      </button>
     </div>
+    {% for error in form.password.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
   </div>
-</section>
+
+  <button type="submit" class="btn auth__submit-btn">
+    Iniciar sesión
+    {% icon "arrow_forward" %}
+  </button>
+</form>
+
+<p class="auth__forgot-row"><a class="auth__switch-link" href="{% url 'store:password_reset_request' %}">Olvidé mi contraseña</a></p>
+<p class="auth__switch">¿No tienes cuenta? <a class="auth__switch-link" href="{% url 'store:register' %}">Crear cuenta</a></p>
 {% endblock %}
