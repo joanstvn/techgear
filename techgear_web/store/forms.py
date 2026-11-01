@@ -241,7 +241,15 @@ class OrderForm(forms.Form):
     quantity = forms.IntegerField(
         label="Cantidad",
         min_value=1,
-        widget=forms.NumberInput(attrs={"class": INPUT_CLASS, "min": "1", "value": "1"}),
+        widget=forms.NumberInput(
+            attrs={
+                "class": INPUT_CLASS,
+                "min": "1",
+                "value": "1",
+                "inputmode": "numeric",
+                "data-order-quantity": "",
+            }
+        ),
     )
 
 

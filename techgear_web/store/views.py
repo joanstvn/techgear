@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.core.validators import MaxValueValidator
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -41,6 +42,37 @@ def _safe_next_url(request) -> str | None:
     ):
         return next_url
     return None
+
+
+def _productos_y_categorias():
+    """Obtiene productos y categorías del catálogo, tolerando fallos de la API."""
+    try:
+        products = api.list_products()
+    except api.ApiError:
+        products = []
+    categories = sorted(
+        {product.get("category", "") for product in products if product.get("category")}
+    )
+    return products, categories
+
+
+# Landing
+
+
+def home(request):
+    products, categories = _productos_y_categorias()
+    en_stock = sum(1 for product in products if int(product.get("stock") or 0) > 0)
+
+    return render(
+        request,
+        "store/landing.html",
+        {
+            "featured_products": products[:4],
+            "total_products": len(products),
+            "total_categories": len(categories),
+            "in_stock": en_stock,
+        },
+    )
 
 
 # Autenticación
@@ -173,7 +205,15 @@ def product_detail(request, id: str):
         messages.error(request, error.message)
         return redirect("store:catalog")
 
-    form = OrderForm(request.POST or None)
+    session_user = get_session_user(request) or {}
+    form = _order_form_for_product(
+        request.POST or None,
+        product,
+        initial={
+            "customer_name": session_user.get("full_name") or session_user.get("username", ""),
+            "customer_email": session_user.get("email", ""),
+        },
+    )
     return render(
         request,
         "store/product_detail.html",
@@ -189,7 +229,7 @@ def create_order(request, id: str):
         messages.error(request, error.message)
         return redirect("store:catalog")
 
-    form = OrderForm(request.POST)
+    form = _order_form_for_product(request.POST, product)
     if not form.is_valid():
         return render(
             request,
@@ -224,6 +264,18 @@ def create_order(request, id: str):
         f"Pedido de {quantity} unidad(es) de '{product.get('name')}' registrado correctamente.",
     )
     return redirect("store:product_detail", id=id)
+
+
+def _order_form_for_product(data, product, initial=None):
+    form = OrderForm(data, initial=initial)
+    try:
+        stock = max(0, int(product.get("stock") or 0))
+    except (TypeError, ValueError):
+        stock = 0
+    quantity_field = form.fields["quantity"]
+    quantity_field.widget.attrs["max"] = stock
+    quantity_field.validators.append(MaxValueValidator(stock))
+    return form
 
 
 # Panel de catálogo (requiere sesión)
@@ -321,19 +373,34 @@ def product_delete(request, id: str):
 
 @admin_required_session
 def panel_admin(request):
-    stats = {"products": 0, "users": 0, "orders": 0, "pending": 0}
+    stats = {
+        "products": 0,
+        "users": 0,
+        "orders": 0,
+        "pending": 0,
+        "revenue": 0,
+        "stock_units": 0,
+        "low_stock": 0,
+        "out_of_stock": 0,
+    }
+    products = []
+    users = []
     orders = []
+    api_available = True
 
     try:
-        stats["products"] = len(api.list_products())
+        products = api.list_products()
+        stats["products"] = len(products)
     except api.ApiError:
-        pass
+        api_available = False
 
     try:
-        stats["users"] = len(api.list_users(get_access_token(request)))
+        users = api.list_users(get_access_token(request))
+        stats["users"] = len(users)
     except api.ApiError as error:
         if error.status_code == 401:
             return _handle_api_error(request, error) or redirect("store:login")
+        api_available = False
 
     try:
         orders = api.list_orders()
@@ -341,13 +408,36 @@ def panel_admin(request):
         stats["pending"] = sum(
             1 for order in orders if str(order.get("status", "")).lower() == "pendiente"
         )
-    except api.ApiError:
-        pass
+        stats["revenue"] = sum(float(order.get("total_price") or 0) for order in orders)
+    except (api.ApiError, TypeError, ValueError):
+        api_available = False
+
+    stock_values = []
+    for product in products:
+        try:
+            stock = max(0, int(product.get("stock") or 0))
+        except (TypeError, ValueError):
+            stock = 0
+        stock_values.append((stock, product))
+        stats["stock_units"] += stock
+
+    stats["low_stock"] = sum(1 for stock, _ in stock_values if 0 < stock <= 5)
+    stats["out_of_stock"] = sum(1 for stock, _ in stock_values if stock == 0)
+    low_stock_products = [
+        {**product, "stock": stock}
+        for stock, product in sorted(stock_values, key=lambda item: item[0])
+        if stock <= 5
+    ][:5]
 
     return render(
         request,
         "store/panel/dashboard.html",
-        {"stats": stats, "recent_orders": orders[-5:][::-1]},
+        {
+            "stats": stats,
+            "recent_orders": orders[-4:][::-1],
+            "low_stock_products": low_stock_products,
+            "api_available": api_available,
+        },
     )
 
 

@@ -42,6 +42,17 @@ def login_session(client, user=ADMIN_USER, token="token-de-prueba"):
 
 class CatalogTests(TestCase):
     @patch("store.views.api.list_products")
+    def test_home_renders_landing(self, list_products):
+        list_products.return_value = [PRODUCT]
+
+        response = self.client.get(reverse("store:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "techgear")
+        self.assertContains(response, PRODUCT["name"])
+        self.assertContains(response, "verificada")
+
+    @patch("store.views.api.list_products")
     def test_catalog_lists_products(self, list_products):
         list_products.return_value = [PRODUCT]
 

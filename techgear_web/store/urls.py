@@ -5,8 +5,10 @@ from store import views
 app_name = "store"
 
 urlpatterns = [
+    # Landing
+    path("", views.home, name="home"),
     # Catálogo público
-    path("", views.catalog, name="catalog"),
+    path("catalogo/", views.catalog, name="catalog"),
     path("producto/<str:id>/", views.product_detail, name="product_detail"),
     path("producto/<str:id>/pedido/", views.create_order, name="create_order"),
     # Autenticación

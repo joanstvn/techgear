@@ -1,97 +1,149 @@
 {% extends "store/panel/panel_base.html" %}
+{% load store_tags %}
 
-{% block panel_title %}Panel de administración{% endblock %}
+{% block panel_title %}Resumen de administración{% endblock %}
 
 {% block panel_content %}
-<header class="panel-header">
-  <div>
-    <p class="eyebrow">Panel de administración</p>
-    <h1>Resumen general</h1>
-    <p class="muted">Estado actual de la tienda TechGear.</p>
-  </div>
-  <a class="btn btn-primary" href="{% url 'store:panel' %}">Gestionar catálogo</a>
-</header>
+<div class="admin-dashboard">
+  <header class="admin-welcome">
+    <div class="admin-welcome__copy">
+      <p class="eyebrow">PANEL DE ADMINISTRACIÓN</p>
+      <h1>Hola, {{ session_user.full_name|default:session_user.username|default:"administrador" }}</h1>
+      <p>Revisa tus pedidos y el estado de tu inventario.</p>
+    </div>
+    <div class="admin-welcome__tools">
+      <span class="admin-date">{% now "l, j F Y" %}</span>
+      <a class="btn btn-primary" href="{% url 'store:product_create' %}">{% icon "add" %} Añadir producto</a>
+    </div>
+  </header>
 
-<section class="stats-grid">
-  <article class="stat-card">
-    <span class="stat-icon stat-icon-blue">▦</span>
-    <div>
-      <strong>{{ stats.products }}</strong>
-      <span>Productos</span>
-    </div>
-  </article>
-  <article class="stat-card">
-    <span class="stat-icon stat-icon-violet">◉</span>
-    <div>
-      <strong>{{ stats.users }}</strong>
-      <span>Usuarios</span>
-    </div>
-  </article>
-  <article class="stat-card">
-    <span class="stat-icon stat-icon-green">▤</span>
-    <div>
-      <strong>{{ stats.orders }}</strong>
-      <span>Pedidos</span>
-    </div>
-  </article>
-  <article class="stat-card">
-    <span class="stat-icon stat-icon-orange">◔</span>
-    <div>
-      <strong>{{ stats.pending }}</strong>
-      <span>Pendientes</span>
-    </div>
-  </article>
-</section>
-
-<div class="panel-columns">
-  <section class="panel-block">
-    <header class="panel-block-header">
-      <h2>Últimos pedidos</h2>
-      <a href="{% url 'store:orders' %}">Ver todos</a>
-    </header>
-
-    {% if recent_orders %}
-      <div class="table-wrapper">
-        <table class="data-table data-table-compact">
-          <thead>
-            <tr><th>Cliente</th><th>Producto</th><th>Total</th><th>Estado</th></tr>
-          </thead>
-          <tbody>
-            {% for order in recent_orders %}
-              <tr>
-                <td>
-                  <strong>{{ order.customer_name }}</strong>
-                  <small class="muted">{{ order.customer_email }}</small>
-                </td>
-                <td>{{ order.product }} <span class="muted">x{{ order.quantity }}</span></td>
-                <td class="mono">${{ order.total_price|floatformat:2 }}</td>
-                <td><span class="badge badge-status">{{ order.status|capfirst }}</span></td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+  <div class="admin-notice-area">
+    {% if not api_available %}
+      <div class="admin-api-notice" role="status">
+        {% icon "help" %}<span>No se pudieron actualizar los datos. Comprueba que la API esté activa y recarga el panel.</span>
       </div>
+    {% elif stats.pending or stats.low_stock or stats.out_of_stock %}
+      <section class="admin-priority" aria-label="Elementos que requieren atención">
+        <div class="admin-priority__heading"><span class="admin-priority__pulse"></span><strong>Requiere atención</strong></div>
+        <div class="admin-priority__items">
+          {% if stats.pending %}
+            <a class="admin-priority-item" href="{% url 'store:orders' %}">
+              <span class="admin-priority-item__icon">{% icon "receipt_long" %}</span>
+              <span><strong>{{ stats.pending }} pedido{{ stats.pending|pluralize:"s" }} pendiente{{ stats.pending|pluralize:"s" }}</strong><small>Revisa los pedidos por procesar</small></span>
+              {% icon "arrow_forward" "admin-priority-item__arrow" %}
+            </a>
+          {% endif %}
+          {% if stats.out_of_stock or stats.low_stock %}
+            <a class="admin-priority-item" href="{% url 'store:panel' %}">
+              <span class="admin-priority-item__icon">{% icon "inventory_2" %}</span>
+              <span><strong>Inventario por revisar</strong><small>{{ stats.out_of_stock }} agotado{{ stats.out_of_stock|pluralize:"s" }} · {{ stats.low_stock }} con stock bajo</small></span>
+              {% icon "arrow_forward" "admin-priority-item__arrow" %}
+            </a>
+          {% endif %}
+        </div>
+      </section>
     {% else %}
-      <p class="muted panel-empty">Todavía no hay pedidos registrados.</p>
+      <div class="admin-priority admin-priority--clear" role="status">
+        <span class="admin-priority__pulse"></span><strong>Todo está al día</strong><span>No hay pedidos pendientes ni alertas de inventario.</span>
+      </div>
     {% endif %}
+  </div>
+
+  <section class="admin-kpis" aria-label="Resumen de la tienda">
+    <article class="admin-kpi admin-kpi--dark">
+      <div class="admin-kpi__top"><span>Valor de pedidos</span><span class="admin-kpi__icon">{% icon "payments" %}</span></div>
+      <strong>${{ stats.revenue|floatformat:2 }}</strong>
+      <small>Total asociado a los pedidos recibidos</small>
+    </article>
+    <article class="admin-kpi admin-kpi--orders">
+      <div class="admin-kpi__top"><span>Pedidos</span><span class="admin-kpi__icon">{% icon "receipt_long" %}</span></div>
+      <strong>{{ stats.orders }}</strong>
+      <small>Registrados en la tienda</small>
+    </article>
+    <article class="admin-kpi admin-kpi--products">
+      <div class="admin-kpi__top"><span>Productos</span><span class="admin-kpi__icon">{% icon "inventory_2" %}</span></div>
+      <strong>{{ stats.products }}</strong>
+      <small>{{ stats.stock_units }} unidades en inventario</small>
+    </article>
+    <article class="admin-kpi admin-kpi--community">
+      <div class="admin-kpi__top"><span>Usuarios</span><span class="admin-kpi__icon">{% icon "group" %}</span></div>
+      <strong>{{ stats.users }}</strong>
+      <small>Cuentas registradas</small>
+    </article>
   </section>
 
-  <section class="panel-block">
-    <header class="panel-block-header"><h2>Accesos rápidos</h2></header>
-    <div class="quick-links">
-      <a href="{% url 'store:product_create' %}">
-        <span class="quick-icon">+</span>
-        <span><strong>Nuevo producto</strong><small>Agregar al inventario</small></span>
-      </a>
-      <a href="{% url 'store:user_create' %}">
-        <span class="quick-icon">◉</span>
-        <span><strong>Nuevo usuario</strong><small>Crear una cuenta</small></span>
-      </a>
-      <a href="{% url 'store:orders' %}">
-        <span class="quick-icon">▤</span>
-        <span><strong>Ver pedidos</strong><small>Actualizar estados</small></span>
-      </a>
-    </div>
-  </section>
+  <div class="admin-dashboard__grid admin-dashboard__grid--primary">
+    <section class="admin-card admin-orders-card">
+      <header class="admin-card__header">
+        <div><p class="admin-card__eyebrow">PEDIDOS</p><h2>Actividad reciente</h2></div>
+        <a class="admin-text-link" href="{% url 'store:orders' %}">Ver todos {% icon "arrow_forward" %}</a>
+      </header>
+      {% if recent_orders %}
+        <div class="admin-orders-list">
+          {% for order in recent_orders %}
+            <article class="admin-order-row">
+              <span class="admin-order-avatar" aria-hidden="true">{{ order.customer_name|default:"C"|slice:":1"|upper }}</span>
+              <div class="admin-order-main">
+                <strong>{{ order.customer_name|default:"Cliente" }}</strong>
+                <span>{{ order.product }} <i aria-hidden="true">·</i> {{ order.quantity }} ud.</span>
+              </div>
+              <div class="admin-order-total">
+                <strong>${{ order.total_price|floatformat:2 }}</strong>
+                {% if order.status == 'pendiente' %}
+                  <span class="admin-status admin-status--pending">Pendiente</span>
+                {% elif order.status == 'en proceso' %}
+                  <span class="admin-status admin-status--processing">En proceso</span>
+                {% elif order.status == 'completado' %}
+                  <span class="admin-status admin-status--completed">Completado</span>
+                {% elif order.status == 'cancelado' %}
+                  <span class="admin-status admin-status--cancelled">Cancelado</span>
+                {% else %}
+                  <span class="admin-status">{{ order.status|default:"Sin estado"|capfirst }}</span>
+                {% endif %}
+              </div>
+            </article>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="admin-empty">
+          <span class="admin-empty__icon">{% icon "shopping_cart" %}</span>
+          <strong>Aún no hay pedidos</strong>
+          <p>Los pedidos de la tienda aparecerán aquí.</p>
+          <a class="admin-text-link" href="{% url 'store:catalog' %}">Visitar catálogo {% icon "arrow_forward" %}</a>
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="admin-card admin-inventory-card" id="inventario">
+      <header class="admin-card__header">
+        <div><p class="admin-card__eyebrow">INVENTARIO</p><h2>Existencias</h2></div>
+        <a class="admin-text-link" href="{% url 'store:panel' %}">Ver catálogo {% icon "arrow_forward" %}</a>
+      </header>
+      <div class="admin-inventory-summary">
+        <div><strong>{{ stats.low_stock }}</strong><span>Stock bajo</span></div>
+        <div><strong>{{ stats.out_of_stock }}</strong><span>Agotados</span></div>
+      </div>
+      {% if low_stock_products %}
+        <div class="admin-stock-list">
+          {% for product in low_stock_products %}
+            <a class="admin-stock-row" href="{% url 'store:product_edit' product.id %}">
+              <span class="admin-stock-row__name"><span class="admin-stock-row__marker"></span>{{ product.name }}</span>
+              {% if product.stock == 0 %}<span class="admin-stock-count admin-stock-count--empty">Agotado</span>{% else %}<span class="admin-stock-count">{{ product.stock }} unidades</span>{% endif %}
+            </a>
+          {% endfor %}
+        </div>
+      {% elif stats.products %}
+        <div class="admin-inventory-good">{% icon "auto_awesome" %}<span>No hay productos agotados ni con pocas existencias.</span></div>
+      {% else %}
+        <div class="admin-empty admin-empty--compact"><p>Aún no tienes productos en el inventario.</p><a class="admin-text-link" href="{% url 'store:product_create' %}">Añadir producto {% icon "arrow_forward" %}</a></div>
+      {% endif %}
+    </section>
+  </div>
+
+  <nav class="admin-actions" aria-label="Accesos rápidos">
+    <a class="admin-action" href="{% url 'store:product_create' %}"><span class="admin-action__icon">{% icon "add" %}</span><span><strong>Crear producto</strong><small>Ampliar el catálogo</small></span>{% icon "arrow_forward" "admin-action__arrow" %}</a>
+    <a class="admin-action" href="{% url 'store:orders' %}"><span class="admin-action__icon">{% icon "receipt_long" %}</span><span><strong>Gestionar pedidos</strong><small>Actualizar estados</small></span>{% icon "arrow_forward" "admin-action__arrow" %}</a>
+    <a class="admin-action" href="{% url 'store:user_create' %}"><span class="admin-action__icon">{% icon "person_add" %}</span><span><strong>Agregar usuario</strong><small>Administrar comunidad</small></span>{% icon "arrow_forward" "admin-action__arrow" %}</a>
+  </nav>
 </div>
 {% endblock %}
