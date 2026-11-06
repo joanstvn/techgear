@@ -6,9 +6,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}TechGear{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}Accede a tu cuenta TechGear para explorar robots inteligentes, gestionar tu carrito y consultar tus pedidos.{% endblock %}">
   <link rel="icon" type="image/png" sizes="512x512" href="{% static 'store/img/techgear-favicon.png' %}?v=2">
   <link rel="apple-touch-icon" href="{% static 'store/img/techgear-favicon.png' %}?v=2">
   <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=20261105-05">
+  <link rel="preload" href="{% static 'store/fonts/dm-sans-latin.woff2' %}" as="font" type="font/woff2" crossorigin>
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -681,7 +683,7 @@
     </div>
   {% endif %}
 
-  <div class="auth-fullscreen">
+  <main class="auth-fullscreen">
 
     <!-- LEFT SIDE: Form & Branding -->
     <div class="auth-left-panel">
@@ -722,7 +724,7 @@
     <!-- RIGHT SIDE: Monochrome Wave Image Panel with Centered Brand & Text -->
     <div class="auth-right-container">
       <div class="auth-right-panel">
-        <img src="{% static 'store/img/auth-wave.png' %}" alt="TechGear Wave" class="auth-wave-bg">
+        <img src="{% static 'store/img/auth-wave.png' %}" alt="" class="auth-wave-bg" fetchpriority="high">
 
         <!-- Centered logo directly on the wallpaper -->
         <div class="auth-hero-content">
@@ -739,7 +741,7 @@
       </div>
     </div>
 
-  </div>
+  </main>
 
   <script>
     function togglePassword(inputId, btn) {
@@ -758,7 +760,6 @@
       if (!form) return;
 
       const inputs = form.querySelectorAll('.auth__input');
-      const initiallyFocusedInput = form.contains(document.activeElement) ? document.activeElement : null;
 
       function clearFieldError(input) {
         const field = input.closest('.auth__field');
@@ -813,8 +814,7 @@
       // Al escribir, quitar el estado de error
       inputs.forEach(input => {
         input.addEventListener('focus', function() {
-          // El autofocus inicial no debe ocultar los errores del primer envío.
-          if (this !== initiallyFocusedInput) clearFieldError(this);
+          clearFieldError(this);
         });
 
         input.addEventListener('pointerdown', function() {
@@ -837,7 +837,6 @@
       // Validación al enviar el formulario
       form.addEventListener('submit', function(e) {
         let hasError = false;
-        let firstInvalid = null;
 
         inputs.forEach(input => {
           const isFieldValid = validateInput(input);
@@ -845,7 +844,6 @@
           if (!isFieldValid) {
             hasError = true;
             triggerError(field);
-            if (!firstInvalid) firstInvalid = input;
           } else if (field) {
             field.classList.remove('has-error');
           }
@@ -853,7 +851,6 @@
 
         if (hasError) {
           e.preventDefault();
-          if (firstInvalid) firstInvalid.focus();
         }
       });
     });

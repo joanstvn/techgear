@@ -3,7 +3,7 @@
 
 {% block title %}TechGear{% endblock %}
 {% block body_class %}admin-dashboard-page{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/admin.css' %}?v=20261105-49">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/admin.css' %}?v=20261106-08">{% endblock %}
 {% block footer %}{% endblock %}
 
 {% block content %}
@@ -18,7 +18,8 @@
   </aside>
 
   <div class="admin-workspace">
-    {% if api_error %}<div class="admin-api-notice">{% icon "cloud_off" %}<span>No se pudo conectar con el servicio. Los datos se actualizarán cuando vuelva a estar disponible.</span></div>{% endif %}
+    {% if api_auth_error %}<div class="admin-api-notice">{% icon "lock" %}<span>Tu sesión administrativa venció o ya no tiene permisos. Inicia sesión de nuevo para cargar los datos.</span><a class="admin-button admin-button--light" href="{% url 'store:login' %}?next={% url 'store:admin_dashboard' %}">Volver a iniciar sesión</a></div>
+    {% elif api_error %}<div class="admin-api-notice" data-api-retry>{% icon "cloud_off" %}<span data-api-retry-message>Estamos reconectando el servicio. Los datos aparecerán cuando vuelva a estar disponible.</span><button class="admin-button admin-button--light" type="button" data-api-retry-now>Reintentar</button></div>{% endif %}
     <section class="admin-panel admin-overview" id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" tabindex="0">
       <header class="admin-dashboard__header">
         <div><h1>Panel de administración</h1>
@@ -40,7 +41,7 @@
       </header>
       {% if products %}<div class="admin-product-rail" tabindex="0" data-lenis-prevent aria-label="Lista de productos. Desplázate para ver más.">
         {% for product in products %}<article class="admin-product-card">
-          <div class="admin-product-card__image"><img src="{% if product.image %}{{ product.image }}{% elif product.image_url %}{{ product.image_url }}{% else %}{% static 'store/img/robots/robot1.png' %}{% endif %}" alt="{{ product.name }}" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="admin-product-card__image"><img src="{% if product.image %}{{ product.image }}{% elif product.image_url %}{{ product.image_url }}{% else %}{% static 'store/img/robots/robot1.png' %}{% endif %}" alt="{{ product.name }}" loading="lazy" decoding="async" onerror="this.style.display='none'"></div>
           <div class="admin-product-card__body"><p class="admin-product-card__category">{{ product.category|default:"Sin categoría" }}</p><h2>{{ product.name }}</h2>
             <div class="admin-product-card__meta"><strong>{{ product.price|cop_currency }}</strong><span class="admin-stock-pill {% if product.stock|default:0 <= 5 %}is-low{% endif %}">{{ product.stock|default:0 }} uds.</span></div>
             <div class="admin-product-card__actions"><button type="button" class="admin-icon-button" aria-label="Editar {{ product.name }}" data-edit-product data-id="{{ product.id }}" data-name="{{ product.name }}" data-category="{{ product.category }}" data-price="{{ product.price|unlocalize }}" data-stock="{{ product.stock }}" data-image="{{ product.image }}" data-description="{{ product.description }}">{% icon "edit" %}</button><button type="button" class="admin-icon-button admin-icon-button--danger" aria-label="Eliminar {{ product.name }}" data-delete-product data-id="{{ product.id }}" data-name="{{ product.name }}">{% icon "delete" %}</button></div>
@@ -69,7 +70,11 @@
           <div class="admin-order-card__top"><div><span>Pedido #{{ order.id|slice:":8" }}</span><h2>{{ order.customer_name|default:"Cliente" }}</h2></div><span class="admin-order-status is-{{ order.status_key }}">{{ order.status_label }}</span></div>
           <div class="admin-order-card__contact">{{ order.customer_email }}{% if order.created_at %}<span>{{ order.created_at|slice:":10" }}</span>{% endif %}</div>
           <div class="admin-order-card__items">
-            {% if order.items %}{% for item in order.items %}<div><span>{{ item.quantity }} × {{ item.name }}</span><strong>{{ item.subtotal|default:item.unit_price|cop_currency }}</strong></div>{% endfor %}
+            {% if order.items %}{% for item in order.items %}<div class="admin-order-card__item">
+              {% if item.image %}<img class="admin-order-card__image" src="{{ item.image }}" alt="{{ item.name }}" loading="lazy" decoding="async" onerror="this.style.display='none'">
+              {% else %}<span class="admin-order-card__image admin-order-card__image--empty" aria-hidden="true">{% icon "inventory_2" %}</span>{% endif %}
+              <span class="admin-order-card__item-name">{{ item.quantity }} × {{ item.name }}</span><strong>{{ item.subtotal|default:item.unit_price|cop_currency }}</strong>
+            </div>{% endfor %}
             {% else %}<div><span>{{ order.quantity }} × {{ order.product }}</span></div>{% endif %}
           </div>
           <div class="admin-order-card__total"><span>Total</span><strong>{{ order.total_price|cop_currency }}</strong></div>

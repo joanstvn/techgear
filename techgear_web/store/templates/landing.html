@@ -6,10 +6,13 @@
 {% block body_class %}landing-page{% endblock %}
 
 {% block extra_css %}
-  <link rel="stylesheet" href="{% static 'store/css/hero-axial.css' %}?v=1.13">
+  <link rel="stylesheet" href="{% static 'store/css/hero-axial.css' %}?v=1.14">
 {% endblock %}
 
 {% block content %}
+{% if catalog_unavailable %}
+  <div class="catalog-service-notice" role="status" data-api-retry>El catálogo se está reconectando. Puedes seguir navegando y lo actualizaremos cuando vuelva.</div>
+{% endif %}
 <section class="hero" id="hero">
   <div class="hand" id="hl" data-tip="0.736" aria-hidden="true"></div>
   <div class="hand" id="hr" data-tip="0.335" aria-hidden="true"></div>
@@ -245,7 +248,7 @@
     {% else %}
       <div class="featured__banner reveal">
         <a class="featured__banner-link" href="{% url 'store:catalog' %}" aria-label="Explorar catálogo de robots">
-          <img class="featured__banner-img" src="{% static 'store/img/robots/hero-robot-team.webp' %}" alt="Colección de robots inteligentes TechGear" loading="lazy">
+          <img class="featured__banner-img" src="{% static 'store/img/robots/robot1.png' %}" alt="Colección de robots inteligentes TechGear" loading="lazy">
         </a>
       </div>
     {% endif %}

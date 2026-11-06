@@ -18,10 +18,10 @@
     {% static 'store/img/placeholder.svg' as placeholder_img %}
     <div class="detail-media reveal">
       {% if product.image %}
-        <img src="{{ product.image }}" alt="{{ product.name }}" loading="eager"
+        <img src="{{ product.image }}" alt="{{ product.name }}" loading="eager" fetchpriority="high" decoding="async"
              onerror="this.onerror=null;this.src='{{ placeholder_img }}';">
       {% else %}
-        <img src="{{ placeholder_img }}" alt="{{ product.name }}">
+        <img src="{{ placeholder_img }}" alt="{{ product.name }}" fetchpriority="high" decoding="async">
       {% endif %}
     </div>
 
@@ -85,7 +85,7 @@
 
             <div class="order-box-grid">
               <div class="order-qty-col">
-                <span class="order-box-label">Selecciona la cantidad</span>
+                <label class="order-box-label" for="{{ form.quantity.id_for_label }}">Selecciona la cantidad</label>
                 <div class="quantity-control-ref" data-quantity-control>
                   <button type="button" class="quantity-btn-ref" data-quantity-step="-1" aria-label="Disminuir cantidad">−</button>
                   {{ form.quantity }}
@@ -113,7 +113,7 @@
           </div>
         </div>
       {% else %}
-        <div class="alert alert-warning">Este producto se encuentra agotado por el momento.</div>
+        <div class="alert alert-stock-out">Este producto se encuentra agotado por el momento.</div>
       {% endif %}
     </div>
   </section>

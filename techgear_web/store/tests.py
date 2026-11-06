@@ -10,7 +10,7 @@ PRODUCT = {
     "price": 289.90,
     "stock": 14,
     "category": "Robótica educativa",
-    "image": "https://example.com/robo.webp",
+    "image": "https://example.com/robo.png",
 }
 
 

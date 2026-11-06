@@ -2,6 +2,7 @@
 {% load store_tags %}
 
 {% block title %}TechGear{% endblock %}
+{% block meta_description %}Inicia sesión en TechGear para consultar tu carrito y dar seguimiento a tus pedidos de robots inteligentes.{% endblock %}
 
 {% block auth_content %}
 <h1 class="auth__title">Iniciar sesión</h1>
@@ -21,7 +22,6 @@
         name="username"
         value="{{ form.username.value|default:'' }}"
         autocomplete="username"
-        autofocus
         class="auth__input"
         required
       />

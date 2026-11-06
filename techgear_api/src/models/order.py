@@ -9,6 +9,7 @@ class CartOrderItem(BaseModel):
 
 class CartOrderModel(BaseModel):
     items: list[CartOrderItem] = Field(min_length=1, max_length=30)
+    checkout_key: str | None = Field(default=None, min_length=16, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
 
 
 OrderStatus = Literal[

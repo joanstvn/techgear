@@ -4,7 +4,7 @@
 
 {% block title %}TechGear{% endblock %}
 {% block body_class %}catalog-page{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/catalog.css' %}?v=20261105-mobile">{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/catalog.css' %}?v=20261106-soldout-x">{% endblock %}
 
 {% block content %}
 <section class="catalog-minimal-header">
@@ -16,18 +16,25 @@
 </section>
 
 <section class="container catalog-results">
-  {% if products %}
+  {% if catalog_unavailable %}
+    <div class="empty-state" data-api-retry>
+      <h2>No se pudo cargar el catálogo</h2>
+      <p class="muted">Estamos conectando con el catálogo. La página seguirá disponible mientras el servicio se reactiva.</p>
+      <button class="btn btn-primary" type="button" data-api-retry-now>Reintentar</button>
+    </div>
+  {% elif products %}
     {% static 'store/img/placeholder.svg' as placeholder_img %}
     <div class="product-grid product-grid--minimal">
       {% for product in products %}
         <article class="product-card product-card--minimal reveal">
-          <a class="product-media product-media--vertical" href="{% url 'store:product_detail' product.id %}">
+          <a class="product-media product-media--vertical{% if not product.in_stock %} is-sold-out{% endif %}" href="{% url 'store:product_detail' product.id %}"{% if not product.in_stock %} aria-label="{{ product.name }}: agotado. Ver detalles del producto."{% endif %}>
             {% if product.image %}
-              <img src="{{ product.image }}" alt="{{ product.name }}" loading="lazy"
+              <img src="{{ product.image }}" alt="{{ product.name }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" decoding="async"{% if forloop.first %} fetchpriority="high"{% endif %}
                    onerror="this.onerror=null;this.src='{{ placeholder_img }}';">
             {% else %}
-              <img src="{{ placeholder_img }}" alt="{{ product.name }}" loading="lazy">
+              <img src="{{ placeholder_img }}" alt="{{ product.name }}" loading="{% if forloop.first %}eager{% else %}lazy{% endif %}" decoding="async"{% if forloop.first %} fetchpriority="high"{% endif %}>
             {% endif %}
+            {% if not product.in_stock %}<span class="sold-out-mark" aria-hidden="true"></span>{% endif %}
           </a>
           <div class="product-body product-body--minimal">
             <h2 class="product-name">

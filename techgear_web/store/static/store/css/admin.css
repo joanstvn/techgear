@@ -98,6 +98,26 @@ body.admin-dashboard-page { min-height: 100vh; background: #f5f5f3; color: #1719
   .admin-modal__actions .admin-button { flex: 1; padding-inline: 9px; }
 }
 
+/* Center the API notice against the viewport, not the workspace beside the sidebar. */
+@media (min-width: 901px) {
+  .admin-workspace > .admin-api-notice {
+    position: relative;
+    left: calc(-1 * ((224px + clamp(24px, 3vw, 38px)) / 2));
+  }
+}
+@media (min-width: 681px) and (max-width: 900px) {
+  .admin-workspace > .admin-api-notice {
+    position: relative;
+    left: -107px;
+  }
+}
+@media (max-width: 680px) {
+  .admin-workspace > .admin-api-notice {
+    position: static;
+    left: auto;
+  }
+}
+
 /* Match TechGear's white landing canvas and the rounded login controls. */
 body.admin-dashboard-page { background: #f9f9f9; color: #1b1b1b; }
 .admin-dashboard-page .site-main { background: #f9f9f9; }
@@ -291,7 +311,10 @@ html.lenis body.admin-dashboard-page { height: 100vh; height: 100dvh; min-height
 .admin-dashboard { height: 100%; min-height: 0; grid-template-rows: minmax(0,1fr); align-items: stretch; overflow: hidden; padding: 18px clamp(24px,4.5vw,84px) 24px; }
 .admin-sidebar { top: 112px; align-self: start; }
 .admin-workspace { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 16px; overflow: hidden; }
-.admin-workspace > .admin-api-notice { flex: none; margin: 0; }
+.admin-workspace > .admin-api-notice { flex: none; align-self: center; width: fit-content; max-width: 100%; margin: 0 auto; padding: 10px 14px; border: 0; border-radius: 9999px; }
+.admin-workspace > .admin-api-notice > span { min-width: 0; }
+.admin-workspace > .admin-api-notice .admin-button--light { flex: none; border: 0; border-radius: 9999px; box-shadow: 0 2px 8px rgba(20, 24, 21, .08); }
+.admin-workspace > .admin-api-notice .admin-button--light:hover { border: 0; }
 .admin-panel { flex: 1 1 0; min-height: 0; overflow: hidden; }
 .admin-overview { display: grid; grid-template-rows: auto auto auto; flex: 1 1 0; min-height: 0; }
 .admin-inventory, .admin-users { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; padding: 0; overflow: hidden; }
@@ -1039,3 +1062,64 @@ html.lenis body.admin-dashboard-page { height: 100vh; height: 100dvh; min-height
 
 .admin-modal .admin-file-picker__button { background: #e8e8e8; color: #3f3f3f; }
 .admin-modal .admin-file-picker__button:hover { background: #dedede; }
+
+/* Keep product thumbnails aligned with each order line. */
+.admin-order-card__item { align-items: center; min-width: 0; }
+.admin-order-card__image { display: grid; place-items: center; width: 52px; height: 52px; flex: none; overflow: hidden; border-radius: 13px; background: #fff; object-fit: contain; }
+.admin-order-card__image--empty { color: #777; }
+.admin-order-card__image--empty .icon { width: 22px; height: 22px; }
+.admin-order-card__item-name { flex: 1; min-width: 0; color: #484848; }
+.admin-order-card__item strong { flex: none; }
+
+/* Preserve clear white lettering and a stable shape on the destructive action. */
+.admin-modal--delete .admin-button--danger,
+.admin-modal--delete .admin-button--danger:hover,
+.admin-modal--delete .admin-button--danger:focus-visible,
+.admin-modal--delete .admin-button--danger:active {
+  transform: none;
+  color: #fff;
+}
+.admin-modal--delete .admin-button--danger { background: #b42318; }
+.admin-modal--delete .admin-button--danger:hover,
+.admin-modal--delete .admin-button--danger:focus-visible { background: #921f18; }
+.admin-modal--delete .admin-button--danger:active { background: #7f1d1d; }
+.admin-modal--delete .admin-button--danger .icon { color: inherit; }
+
+/* Improve text contrast in dashboard sections flagged by Lighthouse. */
+.admin-dashboard-page .admin-kicker,
+.admin-dashboard-page .admin-dashboard__header > div > p:last-child,
+.admin-dashboard-page .admin-blank,
+.admin-dashboard-page .admin-overview-card > small,
+.admin-dashboard-page .admin-product-card__category,
+.admin-dashboard-page .admin-user-card__identity small { color: #5f6368; }
+.admin-dashboard-page .admin-blank > p { color: #5f6368; }
+.admin-dashboard-page .admin-user-card__email { color: #555b56; }
+
+/* Align the admin section rail with the dashboard title. */
+@media (min-width: 681px) {
+  .admin-sidebar { align-self: start; top: 112px; padding-top: 38px; transform: none; }
+}
+@media (max-width: 680px) {
+  .admin-sidebar { align-self: stretch; padding-top: 0; transform: none; }
+}
+
+/* Keep workflow colors on the order status badges and selected trigger only. */
+.admin-order-select-control .admin-select-option,
+.admin-order-select-control .admin-select-option[data-status] {
+  background: #f2f2f2;
+  color: #4b4b4b;
+}
+.admin-order-select-control .admin-select-option:hover,
+.admin-order-select-control .admin-select-option.is-active,
+.admin-order-select-control .admin-select-option.is-selected,
+.admin-order-select-control .admin-select-option[data-status].is-active,
+.admin-order-select-control .admin-select-option[data-status].is-selected {
+  background: #e5e5e5;
+  color: #242424;
+}
+.admin-order-status-form .admin-select-trigger[data-status] {
+  background: #fff;
+  color: #4b4b4b;
+  border: 0;
+  box-shadow: 0 1px 3px rgba(20, 20, 20, .05);
+}

@@ -7,7 +7,7 @@
   --btn: #222;
   --btn-ink: #f4f4f4;
   --dot: #a9a9a9;
-  --head1: #9d9d9d;
+  --head1: #626262;
   color-scheme: light;
 }
 
@@ -153,3 +153,5 @@
     top: 60px;
   }
 }
+.catalog-service-notice{position:relative;z-index:2;width:fit-content;max-width:calc(100% - 32px);margin:94px auto 0;padding:12px 18px;border-radius:999px;background:#f3f3f2;color:#555;text-align:center;font-size:.9rem}
+@media (max-width:860px){.catalog-service-notice{margin-top:18px}}

@@ -1,7 +1,9 @@
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from pymongo.errors import PyMongoError
 
 from src.routes.auth import router as auth_router
 from src.routes.orders import router as orders_router
@@ -27,6 +29,16 @@ app = FastAPI(
     redoc_url=None if IS_PRODUCTION else "/redoc",
     openapi_url=None if IS_PRODUCTION else "/openapi.json",
 )
+
+
+@app.exception_handler(PyMongoError)
+async def handle_database_unavailable(_request: Request, _error: PyMongoError):
+    """Return a safe, retryable response when MongoDB is unavailable."""
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "El servicio de datos no está disponible ahora. Inténtalo de nuevo."},
+        headers={"Retry-After": "5"},
+    )
 
 # Configuración de CORS
 app.add_middleware(

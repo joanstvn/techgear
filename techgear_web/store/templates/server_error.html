@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}TechGear{% endblock %}
+{% block body_class %}service-error-page{% endblock %}
+{% block content %}
+<section class="service-error container" role="status" aria-live="polite" data-api-retry>
+  <p class="eyebrow">Conexión temporalmente interrumpida</p>
+  <h1>Estamos reconectando el servicio</h1>
+  <p>La tienda sigue aquí. Estamos intentando restablecer la conexión; puedes volver a intentarlo en unos segundos.</p>
+  <button class="btn btn-primary" type="button" data-api-retry-now>Reintentar</button>
+</section>
+{% endblock %}

@@ -91,6 +91,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'store.views.cart_context',
+                'store.context_processors.api_config',
             ],
         },
     },
@@ -168,6 +169,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # sin necesidad de ejecutar collectstatic en cada arranque.
 WHITENOISE_USE_FINDERS = True
 WHITENOISE_AUTOREFRESH = DEBUG
+# Keeps static assets cached on repeat visits while letting stable filenames
+# refresh daily after a deployment.
+WHITENOISE_MAX_AGE = 60 * 60 * 24 if not DEBUG else 0
 STORAGES = {
     'default': {
         'BACKEND': 'django.core.files.storage.FileSystemStorage',
@@ -181,7 +185,9 @@ STORAGES = {
 # API de TechGear (FastAPI + MongoDB)
 # URL base del backend al que se conectan las vistas de Django
 API_BASE_URL = os.getenv('TECHGEAR_API_URL', 'http://127.0.0.1:8000')
-API_TIMEOUT = int(os.getenv('TECHGEAR_API_TIMEOUT', '10'))
+API_TIMEOUT = float(os.getenv('TECHGEAR_API_TIMEOUT', '10'))
+API_CONNECT_TIMEOUT = float(os.getenv('TECHGEAR_API_CONNECT_TIMEOUT', '1'))
+API_READ_TIMEOUT = float(os.getenv('TECHGEAR_API_READ_TIMEOUT', '2'))
 
 # Almacenamiento persistente para imágenes cargadas desde el panel.
 CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME', '').strip()

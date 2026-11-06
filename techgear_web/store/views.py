@@ -7,6 +7,8 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from functools import wraps
 from urllib.parse import urlencode
+from uuid import uuid4
+from concurrent.futures import ThreadPoolExecutor
 from django.views.decorators.http import require_POST
 import requests
 
@@ -92,19 +94,19 @@ def _productos_y_categorias():
     try:
         products = api.list_products()
     except api.ApiError:
-        return [], 0, True
+        return [], [], True
     categories = sorted(
         {product.get("category", "") for product in products if product.get("category")}
     )
-    return products, categories
+    return products, categories, False
 
 
 # Landing
 
 
 def home(request):
-    products, categories = _productos_y_categorias()
-    en_stock = sum(1 for product in products if int(product.get("stock") or 0) > 0)
+    products, categories, catalog_unavailable = _productos_y_categorias()
+    en_stock = sum(1 for product in products if _stock_value(product) > 0)
 
     return render(
         request,
@@ -114,6 +116,7 @@ def home(request):
             "total_products": len(products),
             "total_categories": len(categories),
             "in_stock": en_stock,
+            "catalog_unavailable": catalog_unavailable,
         },
     )
 
@@ -122,11 +125,14 @@ def home(request):
 
 
 def catalog(request):
+    catalog_unavailable = False
     try:
         products = api.list_products()
-    except api.ApiError as error:
-        messages.error(request, error.message)
+    except api.ApiError:
         products = []
+        catalog_unavailable = True
+    for product in products:
+        product["in_stock"] = _stock_value(product) > 0
 
     query = request.GET.get("q", "").strip()
     category = request.GET.get("categoria", "").strip()
@@ -154,6 +160,7 @@ def catalog(request):
             "categories": categories,
             "query": query,
             "selected_category": category,
+            "catalog_unavailable": catalog_unavailable,
         },
     )
 
@@ -174,7 +181,24 @@ def product_detail(request, id: str):
 
 
 def _cart_count(request):
-    return sum(max(0, int(quantity)) for quantity in (request.session.get("cart") or {}).values())
+    cart = request.session.get("cart") or {}
+    if not isinstance(cart, dict):
+        request.session["cart"] = {}
+        return 0
+    total = 0
+    for quantity in cart.values():
+        try:
+            total += max(0, min(99, int(quantity)))
+        except (TypeError, ValueError):
+            continue
+    return total
+
+
+def _stock_value(product):
+    try:
+        return max(0, int(product.get("stock") or 0))
+    except (TypeError, ValueError, AttributeError):
+        return 0
 
 
 def cart_context(request):
@@ -183,10 +207,15 @@ def cart_context(request):
 
 def _cart_products(request):
     cart = request.session.get("cart") or {}
+    if not isinstance(cart, dict):
+        request.session["cart"] = {}
+        return [], 0, False, False
+    if not cart:
+        return [], 0, False, False
     try:
         products = api.list_products()
     except api.ApiError:
-        products = []
+        return [], 0, True, False
     by_id = {}
     for product in products:
         product.setdefault("image", product.get("image_url") or "")
@@ -194,35 +223,55 @@ def _cart_products(request):
     rows = []
     cleaned_cart = {}
     total = 0.0
+    stock_issue = False
+    removed_count = 0
     for product_id, raw_quantity in cart.items():
         product = by_id.get(str(product_id))
         if not product:
+            removed_count += 1
             continue
         try:
-            quantity = max(1, int(raw_quantity))
-            stock = max(0, int(product.get("stock") or 0))
+            raw_value = int(raw_quantity)
+            quantity = max(1, min(99, raw_value))
+            stock = _stock_value(product)
         except (TypeError, ValueError):
+            removed_count += 1
             continue
-        if stock < 1:
-            continue
-        quantity = min(quantity, stock)
-        price = float(product.get("price") or 0)
-        subtotal = round(price * quantity, 2)
+        if stock < 1 or quantity > stock:
+            stock_issue = True
+        if raw_value > 99:
+            messages.warning(request, "La cantidad máxima por producto es 99; actualizamos el carrito.")
+        try:
+            price = max(0.0, float(product.get("price") or 0))
+        except (TypeError, ValueError):
+            price = 0.0
+            stock_issue = True
+        subtotal = round(price * quantity, 2) if stock > 0 and quantity <= stock else 0
         cleaned_cart[str(product_id)] = quantity
-        rows.append({"product": product, "quantity": quantity, "subtotal": subtotal})
+        rows.append({"product": product, "quantity": quantity, "subtotal": subtotal,
+                     "available": stock > 0 and quantity <= stock, "stock": stock})
         total += subtotal
     if cleaned_cart != cart:
         request.session["cart"] = cleaned_cart
-    return rows, round(total, 2), False
+        request.session.pop("cart_checkout_key", None)
+    if removed_count:
+        messages.warning(request, "Quitamos del carrito los productos que ya no están disponibles.")
+    if stock_issue:
+        messages.warning(request, "Hay productos sin stock suficiente. Ajusta o quita esas cantidades antes de confirmar.")
+    return rows, round(total, 2), False, stock_issue
 
 
 def cart_view(request):
-    rows, total, cart_unavailable = _cart_products(request)
+    cart = request.session.get("cart") or {}
+    if isinstance(cart, dict) and cart and not request.session.get("cart_checkout_key"):
+        request.session["cart_checkout_key"] = uuid4().hex
+    rows, total, cart_unavailable, stock_issue = _cart_products(request)
     return render(request, "cart.html", {
         "cart_rows": rows,
         "cart_total": total,
         "cart_count": _cart_count(request),
         "cart_unavailable": cart_unavailable,
+        "stock_issue": stock_issue,
     })
 
 
@@ -231,7 +280,10 @@ def cart_add(request, id: str):
     try:
         product = api.get_product(id)
     except api.ApiError as error:
-        messages.error(request, error.message)
+        if error.status_code == 404:
+            messages.error(request, "Este producto ya no está disponible.")
+        else:
+            messages.error(request, error.message)
         return redirect("store:catalog")
     try:
         stock = max(0, int(product.get("stock") or 0))
@@ -242,9 +294,23 @@ def cart_add(request, id: str):
         messages.error(request, "Este producto no tiene unidades disponibles.")
         return redirect("store:product_detail", id=id)
     cart = request.session.get("cart") or {}
-    cart[id] = min(stock, int(cart.get(id, 0)) + quantity)
+    if not isinstance(cart, dict):
+        cart = {}
+    if id not in cart and len(cart) >= 30:
+        messages.error(request, "El carrito admite hasta 30 productos distintos.")
+        return redirect("store:product_detail", id=id)
+    try:
+        current_quantity = max(0, min(99, int(cart.get(id, 0))))
+    except (TypeError, ValueError):
+        current_quantity = 0
+    requested_total = current_quantity + quantity
+    allowed_quantity = min(stock, 99)
+    cart[id] = min(allowed_quantity, requested_total)
     request.session["cart"] = cart
+    request.session.pop("cart_checkout_key", None)
     product_name = product.get("name", "Producto")
+    if requested_total > allowed_quantity:
+        messages.warning(request, f"La cantidad se ajustó al máximo disponible ({allowed_quantity}) para {product_name}.")
     if request.session.get("user") and request.session.get("token"):
         messages.success(request, f"{product_name} se añadió al carrito.")
     return redirect("store:cart")
@@ -253,31 +319,56 @@ def cart_add(request, id: str):
 @require_POST
 def cart_update(request, id: str):
     cart = request.session.get("cart") or {}
+    if not isinstance(cart, dict):
+        request.session["cart"] = {}
+        return redirect("store:cart")
     if id not in cart:
         return redirect("store:cart")
     try:
         quantity = int(request.POST.get("quantity", "1"))
-        product = api.get_product(id)
-        stock = max(0, int(product.get("stock") or 0))
-    except (ValueError, TypeError, api.ApiError):
-        messages.error(request, "No se pudo actualizar la cantidad.")
+    except (ValueError, TypeError):
+        messages.error(request, "Escribe una cantidad válida.")
         return redirect("store:cart")
     if quantity < 1:
         cart.pop(id, None)
-    elif stock < 1:
-        cart.pop(id, None)
-        messages.error(request, "El producto ya no tiene unidades disponibles.")
+        request.session["cart"] = cart
+        request.session.pop("cart_checkout_key", None)
+        return redirect("store:cart")
+    try:
+        product = api.get_product(id)
+        stock = _stock_value(product)
+    except api.ApiError as error:
+        if error.status_code == 404:
+            cart.pop(id, None)
+            request.session["cart"] = cart
+            messages.warning(request, "El producto ya no está disponible y se quitó del carrito.")
+            return redirect("store:cart")
+        messages.error(request, error.message)
+        return redirect("store:cart")
+    except (ValueError, TypeError):
+        messages.error(request, "No se pudo actualizar la cantidad.")
+        return redirect("store:cart")
+    if stock < 1:
+        cart[id] = quantity
+        messages.error(request, "El producto está agotado. Quítalo del carrito para continuar.")
     else:
-        cart[id] = min(quantity, stock)
+        cart[id] = min(quantity, stock, 99)
+        if quantity > min(stock, 99):
+            messages.warning(request, f"La cantidad se ajustó al máximo disponible ({min(stock, 99)}).")
     request.session["cart"] = cart
+    request.session.pop("cart_checkout_key", None)
     return redirect("store:cart")
 
 
 @require_POST
 def cart_remove(request, id: str):
     cart = request.session.get("cart") or {}
-    cart.pop(id, None)
+    if not isinstance(cart, dict):
+        cart = {}
+    else:
+        cart.pop(id, None)
     request.session["cart"] = cart
+    request.session.pop("cart_checkout_key", None)
     return redirect("store:cart")
 
 
@@ -289,16 +380,53 @@ def cart_checkout(request):
         next_url = urlencode({"next": reverse("store:cart")})
         return redirect(f"{reverse('store:login')}?{next_url}")
     cart = request.session.get("cart") or {}
-    if not cart:
+    if not isinstance(cart, dict) or not cart:
+        request.session["cart"] = {}
         messages.error(request, "Tu carrito está vacío.")
         return redirect("store:cart")
-    items = [{"product_id": product_id, "quantity": quantity} for product_id, quantity in cart.items()]
     try:
-        api.create_cart_order({"items": items}, token)
+        items = [{"product_id": str(product_id), "quantity": max(1, min(99, int(quantity)))}
+                 for product_id, quantity in cart.items()]
+    except (TypeError, ValueError):
+        messages.error(request, "El carrito contiene una cantidad inválida. Revísalo antes de continuar.")
+        return redirect("store:cart")
+    # Recheck current stock before sending the order. The API repeats this check
+    # atomically while decrementing inventory, closing the race between requests.
+    try:
+        current_products = {str(item.get("id")): item for item in api.list_products()}
+    except api.ApiError as error:
+        messages.error(request, error.message)
+        return redirect("store:cart")
+    stale_items = [item for item in items if item["product_id"] not in current_products]
+    if stale_items:
+        for item in stale_items:
+            cart.pop(item["product_id"], None)
+        request.session["cart"] = cart
+        request.session.pop("cart_checkout_key", None)
+        messages.warning(request, "Quitamos del carrito productos que ya no están disponibles. Revísalo antes de confirmar.")
+        return redirect("store:cart")
+    unavailable = []
+    for item in items:
+        current_stock = _stock_value(current_products[item["product_id"]])
+        if current_stock < item["quantity"]:
+            unavailable.append((item["product_id"], current_stock))
+    if unavailable:
+        for product_id, current_stock in unavailable:
+            if current_stock > 0:
+                cart[product_id] = current_stock
+        request.session["cart"] = cart
+        request.session.pop("cart_checkout_key", None)
+        messages.error(request, "El stock cambió mientras revisabas el carrito. Ajustamos las cantidades disponibles; revísalas y vuelve a confirmar.")
+        return redirect("store:cart")
+    checkout_key = request.session.get("cart_checkout_key") or uuid4().hex
+    request.session["cart_checkout_key"] = checkout_key
+    try:
+        api.create_cart_order({"items": items, "checkout_key": checkout_key}, token)
     except api.ApiError as error:
         messages.error(request, error.message)
         return redirect("store:cart")
     request.session["cart"] = {}
+    request.session.pop("cart_checkout_key", None)
     messages.success(request, "Recibimos tu pedido. Puedes seguir su estado en Mis pedidos; coordinaremos contigo el pago y la entrega.")
     return redirect("store:my_orders")
 
@@ -307,13 +435,17 @@ def my_orders(request):
     if not request.session.get("user") or not request.session.get("token"):
         next_url = urlencode({"next": reverse("store:my_orders")})
         return redirect(f"{reverse('store:login')}?{next_url}")
+    orders_unavailable = False
     try:
         orders = api.list_my_orders(request.session["token"])
-    except api.ApiError as error:
-        messages.error(request, error.message)
+    except api.ApiError:
         orders = []
+        orders_unavailable = True
     orders = [_decorate_order_status(order) for order in orders]
-    return render(request, "my_orders.html", {"orders": orders})
+    return render(request, "my_orders.html", {
+        "orders": orders,
+        "orders_unavailable": orders_unavailable,
+    })
 
 
 @require_POST
@@ -364,24 +496,27 @@ def admin_required(view):
 @admin_required
 def admin_dashboard(request):
     api_error = False
-    try:
-        products = api.list_products()
-    except api.ApiError as error:
-        messages.error(request, error.message)
-        products = []
-        api_error = True
-    try:
-        users = api.list_users(request.session.get("token", ""))
-    except api.ApiError as error:
-        messages.error(request, error.message)
-        users = []
-        api_error = True
-    try:
-        orders = api.list_orders(request.session.get("token", ""))
-    except api.ApiError as error:
-        messages.error(request, error.message)
-        orders = []
-        api_error = True
+    api_auth_error = False
+    token = request.session.get("token", "")
+    fetchers = {
+        "products": api.list_products,
+        "users": lambda: api.list_users(token),
+        "orders": lambda: api.list_orders(token),
+    }
+    results = {"products": [], "users": [], "orders": []}
+    # A sleeping API should cost one short wait, not one wait per admin tab.
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        futures = {name: executor.submit(fetch) for name, fetch in fetchers.items()}
+        for name, future in futures.items():
+            try:
+                results[name] = future.result()
+            except api.ApiError as error:
+                api_error = True
+                if error.status_code in {401, 403}:
+                    api_auth_error = True
+    products = results["products"]
+    users = results["users"]
+    orders = results["orders"]
     orders = [_decorate_order_status(order, include_options=True) for order in orders]
     return render(request, "admin/dashboard.html", {
         "products": products,
@@ -390,9 +525,10 @@ def admin_dashboard(request):
         "total_products": len(products),
         "total_users": len(users),
         "total_orders": len(orders),
-        "total_stock": sum(max(0, int(product.get("stock") or 0)) for product in products),
+        "total_stock": sum(_stock_value(product) for product in products),
         "total_categories": len({product.get("category") for product in products if product.get("category")}),
         "api_error": api_error,
+        "api_auth_error": api_auth_error,
         "today": timezone.localdate(),
         "product_form": AdminProductForm(),
         "user_form": AdminUserForm(),

@@ -9,21 +9,21 @@
 <main class="cart-shell container">
   <header class="cart-heading"><p class="eyebrow">Tu selección</p><h1>Carrito</h1><p>Revisa los productos antes de confirmar tu pedido.</p></header>
   {% if cart_unavailable %}
-    <section class="cart-empty"><h2>No se pudo cargar el carrito</h2><p>El servicio de productos no está disponible en este momento. Tu selección sigue guardada; vuelve a intentarlo en un momento.</p></section>
+    <section class="cart-empty" data-api-retry><h2>Estamos reconectando el carrito</h2><p>Tu selección está guardada. En cuanto el servicio vuelva a responder, podrás continuar.</p><button class="btn btn-primary" type="button" data-api-retry-now>Reintentar</button></section>
   {% elif cart_rows %}
     <div class="cart-layout">
       <section class="cart-items" aria-label="Productos en el carrito">
         {% for row in cart_rows %}
           <article class="cart-item">
-            <a class="cart-item__image" href="{% url 'store:product_detail' row.product.id %}">{% if row.product.image %}<img src="{{ row.product.image }}" alt="{{ row.product.name }}" onerror="this.style.display='none'">{% endif %}</a>
-            <div class="cart-item__info"><a href="{% url 'store:product_detail' row.product.id %}"><h2>{{ row.product.name }}</h2></a><p>{{ row.product.category|default:"TechGear" }}</p><strong>{{ row.product.price|cop_currency }}</strong></div>
-            <div class="cart-item__quantity"><label for="quantity-{{ row.product.id }}">Cantidad</label><input id="quantity-{{ row.product.id }}" name="quantity" form="update-{{ row.product.id }}" type="number" min="1" max="{{ row.product.stock }}" value="{{ row.quantity }}"></div>
+            <a class="cart-item__image" href="{% url 'store:product_detail' row.product.id %}">{% if row.product.image %}<img src="{{ row.product.image }}" alt="{{ row.product.name }}" loading="lazy" decoding="async" onerror="this.style.display='none'">{% endif %}</a>
+            <div class="cart-item__info"><a href="{% url 'store:product_detail' row.product.id %}"><h2>{{ row.product.name }}</h2></a><p>{{ row.product.category|default:"TechGear" }}</p><strong>{{ row.product.price|cop_currency }}</strong>{% if not row.available %}<p class="cart-stock-warning">{% if row.stock == 0 %}Agotado{% else %}Solo quedan {{ row.stock }} unidades; actualiza la cantidad{% endif %}</p>{% endif %}</div>
+            <div class="cart-item__quantity"><label for="quantity-{{ row.product.id }}">Cantidad</label><input id="quantity-{{ row.product.id }}" name="quantity" form="update-{{ row.product.id }}" type="number" min="1" max="{{ row.stock }}" value="{{ row.quantity }}"></div>
             <div class="cart-item__subtotal"><span>Subtotal</span><strong>{{ row.subtotal|cop_currency }}</strong><div class="cart-item__actions"><form id="update-{{ row.product.id }}" method="post" action="{% url 'store:cart_update' row.product.id %}">{% csrf_token %}<button type="submit">Actualizar</button></form><form method="post" action="{% url 'store:cart_remove' row.product.id %}">{% csrf_token %}<button type="submit">Quitar</button></form></div></div>
           </article>
         {% endfor %}
       </section>
       <aside class="cart-summary"><h2>Resumen</h2><div><span>{{ cart_count }} unidad(es)</span><strong>{{ cart_total|cop_currency }}</strong></div><p>Al confirmar envías una solicitud de pedido; no se realiza ningún cobro en línea. El equipo de TechGear coordinará contigo la disponibilidad, el pago y la entrega.</p>
-        <form method="post" action="{% url 'store:cart_checkout' %}">{% csrf_token %}<button class="btn btn-primary btn-block" type="submit">Confirmar pedido</button></form>
+        <form method="post" action="{% url 'store:cart_checkout' %}">{% csrf_token %}<button class="btn btn-primary btn-block" type="submit" {% if stock_issue or cart_unavailable %}disabled aria-disabled="true"{% endif %}>Confirmar pedido</button></form>
         {% if not request.session.user %}
           <small>Para registrar el pedido debes <a href="{% url 'store:login' %}?next={% url 'store:cart' %}">iniciar sesión</a> o <a href="{% url 'store:register' %}?next={% url 'store:cart' %}">crear una cuenta</a>. Conservaremos tu carrito.</small>
         {% else %}

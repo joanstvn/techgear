@@ -15,7 +15,6 @@ class LoginForm(forms.Form):
                 "class": "auth-input",
                 "placeholder": "Correo",
                 "autocomplete": "username",
-                "autofocus": True,
             }
         ),
     )
@@ -37,7 +36,7 @@ class RegisterForm(forms.Form):
         min_length=2,
         max_length=60,
         widget=forms.TextInput(
-            attrs={"class": "auth-input", "placeholder": "Nombre", "autocomplete": "given-name", "autofocus": True}
+            attrs={"class": "auth-input", "placeholder": "Nombre", "autocomplete": "given-name"}
         ),
     )
     last_name = forms.CharField(
@@ -110,7 +109,6 @@ class PasswordResetRequestForm(forms.Form):
                 "class": "auth-input",
                 "placeholder": "Correo",
                 "autocomplete": "email",
-                "autofocus": True,
             }
         ),
     )

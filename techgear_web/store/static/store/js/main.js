@@ -294,34 +294,50 @@
     var quantity = form.querySelector("[data-order-quantity]");
     var total = form.querySelector("[data-order-total]");
     var unitPrice = Number(form.getAttribute("data-unit-price"));
-    if (!quantity || !total || !Number.isFinite(unitPrice)) return;
+    if (!quantity) return;
     var quantityControl = quantity.closest("[data-quantity-control]");
     var stepButtons = quantityControl ? quantityControl.querySelectorAll("[data-quantity-step]") : [];
 
-    var updateEstimatedTotal = function () {
+    var getBounds = function () {
       var minimum = Number(quantity.min) || 1;
-      var units = Math.max(minimum, Number(quantity.value) || minimum);
       var maximum = Number(quantity.max);
-      if (maximum > 0) units = Math.min(units, maximum);
+      return { minimum: minimum, maximum: maximum > 0 ? maximum : Infinity };
+    };
+
+    var updateEstimatedTotal = function () {
+      var bounds = getBounds();
+      var parsed = Number.parseInt(quantity.value, 10);
+      var units = Number.isFinite(parsed) ? Math.min(bounds.maximum, Math.max(bounds.minimum, parsed)) : bounds.minimum;
       stepButtons.forEach(function (button) {
         var step = Number(button.getAttribute("data-quantity-step"));
-        button.disabled = (step < 0 && units <= minimum) || (step > 0 && maximum > 0 && units >= maximum);
+        button.disabled = (step < 0 && units <= bounds.minimum) || (step > 0 && units >= bounds.maximum);
       });
-      var formatted = new Intl.NumberFormat("es-CO", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-      }).format(unitPrice * units);
-      total.textContent = "$" + formatted + " COP";
+      if (total && Number.isFinite(unitPrice)) {
+        var formatted = new Intl.NumberFormat("es-CO", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0
+        }).format(unitPrice * units);
+        total.textContent = "$" + formatted + " COP";
+      }
     };
 
     quantity.addEventListener("input", updateEstimatedTotal);
+    quantity.addEventListener("change", function () {
+      var bounds = getBounds();
+      var parsed = Number.parseInt(quantity.value, 10);
+      quantity.value = String(Number.isFinite(parsed)
+        ? Math.min(bounds.maximum, Math.max(bounds.minimum, parsed))
+        : bounds.minimum);
+      updateEstimatedTotal();
+    });
     stepButtons.forEach(function (button) {
       button.addEventListener("click", function () {
+        if (button.disabled) return;
         var step = Number(button.getAttribute("data-quantity-step"));
-        var current = Number(quantity.value) || Number(quantity.min) || 1;
-        var next = current + step;
-        var maximum = Number(quantity.max);
-        quantity.value = String(Math.max(Number(quantity.min) || 1, maximum > 0 ? Math.min(next, maximum) : next));
+        var bounds = getBounds();
+        var current = Number.parseInt(quantity.value, 10);
+        if (!Number.isFinite(current)) current = bounds.minimum;
+        quantity.value = String(Math.min(bounds.maximum, Math.max(bounds.minimum, current + step)));
         quantity.dispatchEvent(new Event("input", { bubbles: true }));
       });
     });

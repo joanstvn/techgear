@@ -2,6 +2,7 @@
 {% load store_tags %}
 
 {% block title %}TechGear{% endblock %}
+{% block meta_description %}Crea una cuenta TechGear para guardar tu carrito, realizar pedidos y consultar el estado de tus compras.{% endblock %}
 
 {% block auth_content %}
 <h1 class="auth__title">Crear cuenta</h1>
@@ -22,7 +23,6 @@
           name="first_name"
           value="{{ form.first_name.value|default:'' }}"
           autocomplete="given-name"
-          autofocus
           maxlength="60"
           class="auth__input"
           required
