@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load static store_tags l10n %}
+
+{% block title %}TechGear{% endblock %}
+{% block body_class %}admin-dashboard-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/admin.css' %}?v=20261105-49">{% endblock %}
+{% block footer %}{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard">
+  <aside class="admin-sidebar" aria-label="Administración">
+    <nav class="admin-sidebar__pills" role="tablist" aria-label="Secciones del panel" aria-orientation="vertical">
+      <button class="admin-sidebar__pill is-active" type="button" role="tab" id="tab-dashboard" aria-controls="panel-dashboard" aria-selected="true" data-admin-tab="dashboard">{% icon "dashboard" %}<span>Dashboard</span></button>
+      <button class="admin-sidebar__pill" type="button" role="tab" id="tab-products" aria-controls="panel-products" aria-selected="false" tabindex="-1" data-admin-tab="products">{% icon "inventory_2" %}<span>Productos</span><small>{{ total_products }}</small></button>
+      <button class="admin-sidebar__pill" type="button" role="tab" id="tab-users" aria-controls="panel-users" aria-selected="false" tabindex="-1" data-admin-tab="users">{% icon "group" %}<span>Usuarios</span><small>{{ total_users }}</small></button>
+      <button class="admin-sidebar__pill" type="button" role="tab" id="tab-orders" aria-controls="panel-orders" aria-selected="false" tabindex="-1" data-admin-tab="orders">{% icon "shopping_bag" %}<span>Pedidos</span><small>{{ total_orders }}</small></button>
+    </nav>
+  </aside>
+
+  <div class="admin-workspace">
+    {% if api_error %}<div class="admin-api-notice">{% icon "cloud_off" %}<span>No se pudo conectar con el servicio. Los datos se actualizarán cuando vuelva a estar disponible.</span></div>{% endif %}
+    <section class="admin-panel admin-overview" id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard" tabindex="0">
+      <header class="admin-dashboard__header">
+        <div><h1>Panel de administración</h1>
+          <p>Hola, {{ request.session.user.full_name|default:request.session.user.username }}.</p>
+        </div>
+      </header>
+      <div class="admin-overview__grid">
+        <article class="admin-overview-card admin-overview-card--dark"><span>Productos</span><strong>{{ total_products }}</strong><small>Modelos en el catálogo</small></article>
+        <article class="admin-overview-card"><span>Usuarios</span><strong>{{ total_users }}</strong><small>Cuentas registradas</small></article>
+        <article class="admin-overview-card"><span>Unidades en stock</span><strong>{{ total_stock }}</strong><small>Disponibles en inventario</small></article>
+        <article class="admin-overview-card"><span>Pedidos</span><strong>{{ total_orders }}</strong><small>Registrados en la tienda</small></article>
+      </div>
+    </section>
+
+    <section class="admin-panel admin-inventory" id="panel-products" role="tabpanel" aria-labelledby="tab-products" tabindex="0" hidden>
+      <header class="admin-dashboard__header">
+        <div><h1>Productos</h1><p>Gestiona imágenes, precios y existencias.</p></div>
+        <button class="admin-button admin-button--dark" type="button" data-tab-action="products" data-open-product>{% icon "add" %} Añadir producto</button>
+      </header>
+      {% if products %}<div class="admin-product-rail" tabindex="0" data-lenis-prevent aria-label="Lista de productos. Desplázate para ver más.">
+        {% for product in products %}<article class="admin-product-card">
+          <div class="admin-product-card__image"><img src="{% if product.image %}{{ product.image }}{% elif product.image_url %}{{ product.image_url }}{% else %}{% static 'store/img/robots/robot1.png' %}{% endif %}" alt="{{ product.name }}" loading="lazy" onerror="this.style.display='none'"></div>
+          <div class="admin-product-card__body"><p class="admin-product-card__category">{{ product.category|default:"Sin categoría" }}</p><h2>{{ product.name }}</h2>
+            <div class="admin-product-card__meta"><strong>{{ product.price|cop_currency }}</strong><span class="admin-stock-pill {% if product.stock|default:0 <= 5 %}is-low{% endif %}">{{ product.stock|default:0 }} uds.</span></div>
+            <div class="admin-product-card__actions"><button type="button" class="admin-icon-button" aria-label="Editar {{ product.name }}" data-edit-product data-id="{{ product.id }}" data-name="{{ product.name }}" data-category="{{ product.category }}" data-price="{{ product.price|unlocalize }}" data-stock="{{ product.stock }}" data-image="{{ product.image }}" data-description="{{ product.description }}">{% icon "edit" %}</button><button type="button" class="admin-icon-button admin-icon-button--danger" aria-label="Eliminar {{ product.name }}" data-delete-product data-id="{{ product.id }}" data-name="{{ product.name }}">{% icon "delete" %}</button></div>
+          </div>
+        </article>{% endfor %}
+      </div>{% else %}<div class="admin-blank admin-blank--inline"><span>{% icon "inventory_2" %}</span><strong>Aún no hay productos</strong><p>Añade el primero para comenzar a construir tu catálogo.</p><button type="button" class="admin-button admin-button--light" data-open-product>{% icon "add" %} Añadir producto</button></div>{% endif %}
+    </section>
+
+    <section class="admin-panel admin-users" id="panel-users" role="tabpanel" aria-labelledby="tab-users" tabindex="0" hidden>
+      <header class="admin-dashboard__header">
+        <div><h1>Usuarios</h1><p>Crea cuentas y administra sus permisos.</p></div>
+        <button class="admin-button admin-button--dark" type="button" data-tab-action="users" data-open-user>{% icon "person_add" %} Añadir usuario</button>
+      </header>
+      {% if users %}<div class="admin-user-rail" tabindex="0" data-lenis-prevent aria-label="Lista de usuarios. Desplázate para ver más.">
+        {% for account in users %}<article class="admin-user-card">
+          <div class="admin-user-card__identity"><span>{{ account.full_name|default:account.username|first|upper }}</span><div><h2>{{ account.full_name|default:account.username }}</h2><small>@{{ account.username }}</small></div></div>
+          <p class="admin-user-card__email">{{ account.email }}</p>
+          <div class="admin-user-card__footer"><span class="admin-role {% if account.role == 'admin' or account.role == 'administrador' %}admin-role--admin{% endif %}">{{ account.role|capfirst }}</span><div class="admin-user-card__actions"><button type="button" class="admin-icon-button" aria-label="Editar {{ account.full_name|default:account.username }}" data-edit-user data-id="{{ account.id }}" data-name="{{ account.full_name }}" data-username="{{ account.username }}" data-email="{{ account.email }}" data-role="{{ account.role }}">{% icon "edit" %}</button><button type="button" class="admin-icon-button admin-icon-button--danger" aria-label="Eliminar {{ account.full_name|default:account.username }}" data-delete-user data-id="{{ account.id }}" data-name="{{ account.full_name|default:account.username }}" {% if account.id == request.session.user.id %}disabled title="No puedes eliminar tu propia cuenta"{% endif %}>{% icon "delete" %}</button></div></div>
+        </article>{% endfor %}
+      </div>{% else %}<div class="admin-blank admin-blank--inline"><span>{% icon "group" %}</span><strong>No hay usuarios registrados</strong><p>Las cuentas aparecerán aquí cuando se creen.</p><button type="button" class="admin-button admin-button--light" data-open-user>{% icon "person_add" %} Añadir usuario</button></div>{% endif %}
+    </section>
+    <section class="admin-panel admin-orders" id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" tabindex="0" hidden>
+      <header class="admin-dashboard__header"><div><h1>Pedidos</h1><p>Revisa las solicitudes y actualiza su avance para que cada cliente pueda seguirlas.</p></div></header>
+      {% if orders %}<div class="admin-order-list" aria-label="Pedidos registrados">
+        {% for order in orders %}<article class="admin-order-card" data-order-id="{{ order.id }}">
+          <div class="admin-order-card__top"><div><span>Pedido #{{ order.id|slice:":8" }}</span><h2>{{ order.customer_name|default:"Cliente" }}</h2></div><span class="admin-order-status is-{{ order.status_key }}">{{ order.status_label }}</span></div>
+          <div class="admin-order-card__contact">{{ order.customer_email }}{% if order.created_at %}<span>{{ order.created_at|slice:":10" }}</span>{% endif %}</div>
+          <div class="admin-order-card__items">
+            {% if order.items %}{% for item in order.items %}<div><span>{{ item.quantity }} × {{ item.name }}</span><strong>{{ item.subtotal|default:item.unit_price|cop_currency }}</strong></div>{% endfor %}
+            {% else %}<div><span>{{ order.quantity }} × {{ order.product }}</span></div>{% endif %}
+          </div>
+          <div class="admin-order-card__total"><span>Total</span><strong>{{ order.total_price|cop_currency }}</strong></div>
+          {% if order.can_update_status %}<form class="admin-order-status-form" method="post" action="{% url 'store:admin_update_order_status' order.id %}" data-admin-preserve-position>{% csrf_token %}<label for="order-status-{{ order.id }}">Actualizar estado</label><div><select id="order-status-{{ order.id }}" name="status">{% for option in order.status_options %}<option value="{{ option.value }}" {% if option.selected %}selected{% endif %}>{{ option.label }}</option>{% endfor %}</select><button class="admin-button admin-button--dark" type="submit">Guardar</button></div></form>{% endif %}
+        </article>{% endfor %}
+      </div>{% else %}<div class="admin-blank admin-blank--inline"><span>{% icon "shopping_bag" %}</span><strong>Aún no hay pedidos</strong><p>Los pedidos confirmados por clientes aparecerán aquí.</p></div>{% endif %}
+    </section>
+    <footer class="admin-footnote"><span>TechGear <b>·</b> Administración de catálogo y cuentas</span></footer>
+  </div>
+</div>
+
+<dialog class="admin-modal admin-modal--product" id="product-modal" aria-labelledby="product-modal-title">
+  <form method="post" id="product-form" class="admin-product-form" action="{% url 'store:admin_create_product' %}" enctype="multipart/form-data" novalidate>{% csrf_token %}
+    <div class="admin-modal__top"><div class="admin-modal__heading"><h2 id="product-modal-title">Añadir producto</h2></div><button class="admin-modal__close" type="button" data-close-modal aria-label="Cerrar">×</button></div>
+    <section class="admin-modal__section" aria-labelledby="product-basic-title"><div class="admin-modal__section-heading"><span class="admin-modal__section-mark">{% icon "package_2" %}</span><div><h3 id="product-basic-title">Información básica</h3><p>Nombre, categoría y disponibilidad</p></div></div>
+      <div class="admin-form-grid admin-form-grid--product">
+        <label class="admin-field admin-field--wide">Nombre del producto {{ product_form.name }}</label><label class="admin-field admin-field--third">Categoría {{ product_form.category }}</label><label class="admin-field admin-field--third">Precio (COP) {{ product_form.price }}</label><label class="admin-field admin-field--third">Unidades {{ product_form.stock }}</label>
+      </div>
+    </section>
+    <section class="admin-modal__section" aria-labelledby="product-image-title"><div class="admin-modal__section-heading"><span class="admin-modal__section-mark">{% icon "north_east" %}</span><div><h3 id="product-image-title">Imagen del producto</h3><p>Sube una imagen o pega un enlace público</p></div></div>
+      <div class="admin-image-source" data-image-source>
+        <label class="admin-field">Subir desde el dispositivo
+          <span class="admin-file-picker" data-file-picker>
+            <span class="admin-file-picker__button">Seleccionar archivo</span>
+            <span class="admin-file-picker__name" data-file-name>Ningún archivo seleccionado</span>
+            {{ product_form.image_file }}
+          </span>
+        </label>
+        <label class="admin-field">O pegar una URL pública {{ product_form.image_url }}</label>
+        <small data-image-source-hint>JPG, PNG, WebP o GIF de hasta 5 MB. Elige solo una opción.</small>
+      </div>
+    </section>
+    <section class="admin-modal__section admin-modal__section--description" aria-labelledby="product-description-title"><div class="admin-modal__section-heading"><span class="admin-modal__section-mark">{% icon "receipt_long" %}</span><div><h3 id="product-description-title">Descripción</h3><p>Cuéntanos más sobre este producto</p></div></div><label class="admin-field admin-field--wide">{{ product_form.description }}</label></section>
+    <div class="admin-modal__actions"><button class="admin-button admin-button--light" type="button" data-close-modal>Cancelar</button><button class="admin-button admin-button--dark" type="submit">Guardar producto</button></div>
+  </form>
+</dialog>
+
+<dialog class="admin-modal admin-modal--small admin-modal--delete" id="delete-modal" aria-labelledby="delete-modal-title">
+  <form method="post" id="delete-form">{% csrf_token %}<h2 id="delete-modal-title">Eliminar producto</h2><p class="admin-modal__copy">¿Quieres eliminar <strong data-delete-name></strong> del catálogo? Esta acción no se puede deshacer.</p><div class="admin-modal__actions"><button class="admin-button admin-button--light" type="button" data-close-modal>Cancelar</button><button class="admin-button admin-button--danger" type="submit">{% icon "delete" %} Eliminar producto</button></div></form>
+</dialog>
+
+<dialog class="admin-modal admin-modal--user" id="user-modal" aria-labelledby="user-modal-title">
+  <form method="post" id="user-form" class="admin-user-form" action="{% url 'store:admin_create_user' %}" novalidate>{% csrf_token %}
+    <div class="admin-modal__top"><div class="admin-modal__heading"><h2 id="user-modal-title">Añadir usuario</h2></div><button class="admin-modal__close" type="button" data-close-modal aria-label="Cerrar">×</button></div>
+    <section class="admin-modal__section" aria-labelledby="user-info-title"><div class="admin-modal__section-heading"><span class="admin-modal__section-mark">{% icon "person" %}</span><div><h3 id="user-info-title">Datos de la cuenta</h3><p>Información para identificar y contactar al usuario</p></div></div>
+      <div class="admin-form-grid">
+        <label class="admin-field admin-field--wide">Nombre completo {{ user_form.full_name }}</label>
+        <label class="admin-field">Nombre de usuario {{ user_form.username }}</label><label class="admin-field">Correo electrónico {{ user_form.email }}</label>
+      </div>
+    </section>
+    <section class="admin-modal__section" aria-labelledby="user-access-title"><div class="admin-modal__section-heading"><span class="admin-modal__section-mark">{% icon "verified_user" %}</span><div><h3 id="user-access-title">Acceso y seguridad</h3><p>Asigna el rol y define una contraseña</p></div></div>
+      <div class="admin-form-grid"><label class="admin-field">Rol {{ user_form.role }}</label><label class="admin-field">Contraseña {{ user_form.password }}<small data-password-hint>Usa al menos 12 caracteres.</small></label></div>
+    </section><div class="admin-modal__actions"><button class="admin-button admin-button--light" type="button" data-close-modal>Cancelar</button><button class="admin-button admin-button--dark" type="submit">Crear usuario</button></div>
+  </form>
+</dialog>
+
+<dialog class="admin-modal admin-modal--small admin-modal--delete" id="user-delete-modal" aria-labelledby="user-delete-title">
+  <form method="post" id="user-delete-form">{% csrf_token %}<h2 id="user-delete-title">Eliminar usuario</h2><p class="admin-modal__copy">¿Quieres eliminar la cuenta de <strong data-user-delete-name></strong>? Esta persona perderá el acceso a la administración.</p><div class="admin-modal__actions"><button class="admin-button admin-button--light" type="button" data-close-modal>Cancelar</button><button class="admin-button admin-button--danger" type="submit">{% icon "delete" %} Eliminar usuario</button></div></form>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}<script src="{% static 'store/js/admin.js' %}?v=20261105-18" defer></script>{% endblock %}

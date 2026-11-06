@@ -68,11 +68,19 @@ def login(credentials: LoginModel):
         }
     )
 
-    if not user or not verify_password(credentials.password, user.get("password", "")):
+    stored_password = user.get("password", "") if user else ""
+    if not user or not verify_password(credentials.password, stored_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Migra hashes heredados en texto plano en el primer acceso correcto.
+    if not stored_password.startswith("pbkdf2_sha256$"):
+        users_collection.update_one(
+            {"_id": user["_id"], "password": stored_password},
+            {"$set": {"password": hash_password(credentials.password)}},
         )
 
     access_token = create_access_token(user)

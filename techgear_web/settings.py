@@ -21,12 +21,38 @@ BASE_DIR = Path(__file__).resolve().parent
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-zzs)^%j3)je&e=_9^ald2gyyht0wo1zkwxogbbsurs7jh%k3z%'
+_is_hosted = bool(os.getenv('VERCEL') or os.getenv('RENDER') or os.getenv('APP_ENV', '').lower() == 'production')
+_default_debug = not _is_hosted
+DEBUG = os.getenv('DJANGO_DEBUG', str(_default_debug)).strip().lower() in ('1', 'true', 'yes', 'on')
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', '')
+if not SECRET_KEY:
+    if not DEBUG:
+        raise RuntimeError('Define DJANGO_SECRET_KEY antes de ejecutar TechGear con DEBUG desactivado.')
+    SECRET_KEY = 'django-insecure-local-development-only-techgear-key'
+if not DEBUG and (len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure-')):
+    raise RuntimeError('DJANGO_SECRET_KEY de producción debe tener al menos 50 caracteres aleatorios.')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+ALLOWED_HOSTS = [
+    "127.0.0.1",
+    "localhost",
+]
 
-ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+# Hosts extra separados por coma, por ejemplo: DJANGO_ALLOWED_HOSTS=midominio.com
+_extra_hosts = os.getenv('DJANGO_ALLOWED_HOSTS', '')
+ALLOWED_HOSTS += [h.strip() for h in _extra_hosts.split(',') if h.strip()]
+_vercel_host = os.getenv('VERCEL_URL', '').strip().removeprefix('https://').removeprefix('http://').rstrip('/')
+if _vercel_host:
+    ALLOWED_HOSTS.append(_vercel_host)
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://127.0.0.1:8001",
+    "http://localhost:8001",
+]
+_extra_csrf_origins = os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS', '')
+CSRF_TRUSTED_ORIGINS += [origin.strip().rstrip('/') for origin in _extra_csrf_origins.split(',') if origin.strip()]
+if _vercel_host:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{_vercel_host}')
 
 
 # Application definition
@@ -43,6 +69,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -63,7 +90,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'store.context_processors.session_user',
+                'store.views.cart_context',
             ],
         },
     },
@@ -82,6 +109,22 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
+# Vercel ejecuta funciones sin almacenamiento local persistente. Guarda las
+# sesiones en cookies firmadas para no depender de la tabla django_session en SQLite.
+SESSION_ENGINE = 'django.contrib.sessions.backends.signed_cookies'
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SAMESITE = 'Lax'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
 
 
 # Password validation
@@ -119,6 +162,20 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# WhiteNoise sirve los estáticos también con DEBUG=False (Vercel/Render),
+# sin necesidad de ejecutar collectstatic en cada arranque.
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = DEBUG
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
 
 
 # API de TechGear (FastAPI + MongoDB)
@@ -126,15 +183,7 @@ STATIC_URL = 'static/'
 API_BASE_URL = os.getenv('TECHGEAR_API_URL', 'http://127.0.0.1:8000')
 API_TIMEOUT = int(os.getenv('TECHGEAR_API_TIMEOUT', '10'))
 
-# Autenticación
-LOGIN_URL = '/login/'
-
-
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# Almacenamiento persistente para imágenes cargadas desde el panel.
+CLOUDINARY_CLOUD_NAME = os.getenv('CLOUDINARY_CLOUD_NAME', '').strip()
+CLOUDINARY_API_KEY = os.getenv('CLOUDINARY_API_KEY', '').strip()
+CLOUDINARY_API_SECRET = os.getenv('CLOUDINARY_API_SECRET', '').strip()

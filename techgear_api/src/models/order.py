@@ -1,41 +1,44 @@
-from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class CartOrderItem(BaseModel):
+    product_id: str = Field(min_length=24, max_length=24, pattern=r"^[a-fA-F0-9]{24}$")
+    quantity: int = Field(gt=0, le=99)
+
+
+class CartOrderModel(BaseModel):
+    items: list[CartOrderItem] = Field(min_length=1, max_length=30)
+
+
+OrderStatus = Literal[
+    "pendiente",
+    "confirmado",
+    "en_preparacion",
+    "enviado",
+    "entregado",
+    "cancelado",
+]
 
 
 class OrderModel(BaseModel):
-    customer_name: str
-    customer_email: EmailStr
-    product: str
-    quantity: int
-    total_price: float
-    status: str
+    product_id: str = Field(min_length=24, max_length=24, pattern=r"^[a-fA-F0-9]{24}$")
+    quantity: int = Field(gt=0, le=99)
 
     model_config = ConfigDict(
         json_schema_extra={
-            "example": {
-                "customer_name": "Carlos Rodríguez",
-                "customer_email": "carlos.rodriguez@example.com",
-                "product": "Teclado Mecánico RGB",
-                "quantity": 2,
-                "total_price": 159.98,
-                "status": "pendiente",
-            }
+            "example": {"product_id": "6701f2a8b4c9d1e2f3a4b5c6", "quantity": 2}
         }
     )
 
 
 class OrderUpdateModel(BaseModel):
-    customer_name: Optional[str] = None
-    customer_email: Optional[EmailStr] = None
-    product: Optional[str] = None
-    quantity: Optional[int] = None
-    total_price: Optional[float] = None
-    status: Optional[str] = None
+    status: OrderStatus
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "status": "completado",
+                "status": "entregado",
             }
         }
     )

@@ -1,13 +1,13 @@
-from typing import Optional
-from pydantic import BaseModel, ConfigDict, EmailStr
+from typing import Literal, Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserModel(BaseModel):
-    username: str
+    username: str = Field(min_length=3, max_length=40)
     email: EmailStr
-    password: str
-    full_name: str
-    role: str
+    password: str = Field(min_length=12, max_length=128)
+    full_name: str = Field(min_length=2, max_length=120)
+    role: Literal["cliente", "admin", "administrador"] = "cliente"
 
     model_config = ConfigDict(
         json_schema_extra={
@@ -23,11 +23,11 @@ class UserModel(BaseModel):
 
 
 class UserUpdateModel(BaseModel):
-    username: Optional[str] = None
+    username: Optional[str] = Field(None, min_length=3, max_length=40)
     email: Optional[EmailStr] = None
-    password: Optional[str] = None
-    full_name: Optional[str] = None
-    role: Optional[str] = None
+    password: Optional[str] = Field(None, min_length=12, max_length=128)
+    full_name: Optional[str] = Field(None, min_length=2, max_length=120)
+    role: Optional[Literal["cliente", "admin", "administrador"]] = None
 
     model_config = ConfigDict(
         json_schema_extra={

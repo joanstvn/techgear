@@ -1,0 +1,871 @@
+{% load store_tags %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TechGear{% endblock %}</title>
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'store/img/techgear-favicon.png' %}?v=2">
+  <link rel="apple-touch-icon" href="{% static 'store/img/techgear-favicon.png' %}?v=2">
+  <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=20261105-05">
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: #ffffff;
+      font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, 'DM Sans', 'Inter', sans-serif);
+      color: #0f172a;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* ══════════════════════════════════════════════
+       FULL SCREEN SPLIT LAYOUT
+    ══════════════════════════════════════════════ */
+    .auth-fullscreen {
+      width: 100vw;
+      min-height: 100vh;
+      display: flex;
+      margin: 0;
+      padding: 0;
+      background: #f8f9fa;
+    }
+
+    /* ══════════════════════════════════════════════
+       LEFT SIDE: Forms & Content
+    ══════════════════════════════════════════════ */
+    .auth-left-panel {
+      flex: 0 0 50%;
+      width: 50%;
+      min-height: 100vh;
+      background: #ffffff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px 56px 32px;
+      position: relative;
+      overflow-y: auto;
+    }
+
+    /* Top Row */
+    .auth-panel-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    }
+    .auth-brand-title {
+      font-size: 1.3rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      text-transform: uppercase;
+      color: #090a0f;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .auth-brand-dot {
+      width: 6px;
+      height: 6px;
+      background: #090a0f;
+      border-radius: 50%;
+    }
+    .auth-close-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #f2f2f2;
+      border: none;
+      display: grid;
+      place-items: center;
+      color: #333333;
+      text-decoration: none;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+    .auth-close-btn:hover {
+      background: #dedede;
+      color: #000000;
+    }
+    .auth-close-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* ══════════════════════════════════════════════
+       FORM STYLES — Identical to reactapp (Auth.css)
+    ══════════════════════════════════════════════ */
+    .auth-form-container {
+      width: 100%;
+      max-width: 420px;
+      margin: 32px auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      animation: authFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+    }
+    @keyframes authFadeIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth__title {
+      font-family: var(--font-sans, 'DM Sans', sans-serif);
+      font-size: 2.35rem;
+      font-weight: 700;
+      letter-spacing: -0.035em;
+      color: #111827;
+      margin: 0 0 8px 0;
+      line-height: 1.15;
+    }
+
+    .auth__subtitle {
+      font-size: 1.05rem;
+      color: #6b7280;
+      margin: 0 0 28px 0;
+      line-height: 1.5;
+      max-width: 360px;
+    }
+
+    /* Formulario */
+    .auth__form {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .auth__name-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      width: 100%;
+    }
+    .auth__name-row .auth__field { min-width: 0; padding-inline: 12px; }
+
+    /* Contenedor del campo (estilo reactapp) */
+    .auth__field {
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      border-radius: 18px;
+      padding: 11px 18px;
+      text-align: left;
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+      cursor: text;
+    }
+
+    .auth__field:focus-within {
+      background: #ffffff;
+      border-color: transparent;
+      box-shadow: 0 0 0 4px rgba(17, 24, 39, 0.08);
+    }
+
+    /* Estado de error: solo el contorno externo grueso suave, sin bordes delgados internos */
+    .auth__field.has-error {
+      border-color: transparent !important;
+      box-shadow: 0 0 0 4px rgba(229, 176, 179, 0.65) !important;
+      animation: authShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+
+    .auth__field.has-error:focus-within {
+      border-color: transparent !important;
+      box-shadow: 0 0 0 4px rgba(229, 176, 179, 0.8) !important;
+    }
+
+    @keyframes authShake {
+      0%, 100% {
+        transform: translateX(0);
+      }
+      15%, 45%, 75% {
+        transform: translateX(-5px);
+      }
+      30%, 60%, 90% {
+        transform: translateX(5px);
+      }
+    }
+
+    /* Ocultar mensajes de texto de error bajo los inputs */
+    .field-error {
+      display: none !important;
+    }
+
+    /* Alertas estilo píldora y sin bordes */
+    .auth-alert {
+      width: 100%;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      line-height: 1.4;
+      text-align: left;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-sizing: border-box;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+    }
+
+    .auth-alert--error, .auth-alert--danger {
+      background: #fef2f2;
+      border: none;
+      color: #991b1b;
+    }
+
+    .auth-alert--success {
+      background: #f0fdf4;
+      border: none;
+      color: #166534;
+    }
+
+    .auth-alert--warning {
+      background: #fefce8;
+      border: none;
+      color: #854d0e;
+    }
+
+    .auth-alert--info {
+      background: #f0f4f8;
+      border: none;
+      color: #1e293b;
+    }
+
+    .messages {
+      position: fixed;
+      top: calc(clamp(20px, 4vh, 40px) - 3px);
+      right: auto;
+      bottom: auto;
+      left: 50%;
+      z-index: 3000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: fit-content;
+      max-width: min(660px, calc(100vw - 32px));
+      align-items: center;
+      max-height: calc(100vh - 32px);
+      overflow: visible;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      box-shadow: none;
+      transform: translateX(-50%);
+    }
+    .messages .auth-alert { width: fit-content; max-width: 100%; margin: 0; white-space: normal; border: 0; outline: 0; border-radius: 9999px; }
+    @media (max-width: 700px) {
+      .messages {
+        width: calc(100vw - 32px);
+        max-width: 420px;
+      }
+      .messages .auth-alert {
+        display: block;
+        width: max-content;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 12px 20px;
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+
+    .auth__label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: #6b7280;
+      margin-bottom: 3px;
+      transition: color 0.2s;
+      cursor: text;
+    }
+
+    .auth__field:focus-within .auth__label {
+      color: #111827;
+    }
+
+    .auth__input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+      cursor: text;
+    }
+
+    .auth__input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-family: var(--font-sans, 'DM Sans', sans-serif);
+      font-size: 0.98rem;
+      line-height: 1.4;
+      color: #111827;
+      padding: 2px 32px 2px 0;
+      margin: 0;
+    }
+
+    .auth__input:only-child {
+      padding-right: 0;
+    }
+
+    .auth__input::placeholder {
+      color: #9ca3af;
+      opacity: 0.75;
+    }
+
+    /* Botón toggle password */
+    .auth__toggle-pw {
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      padding: 4px;
+      color: #9ca3af;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: 6px;
+      transition: color 0.2s;
+    }
+
+    .auth__toggle-pw:hover {
+      color: #18181b;
+    }
+
+    .auth__toggle-pw svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Botón submit principal (réplica exacta en negro del botón de reactapp) */
+    .auth__submit-btn {
+      width: 100%;
+      height: 52px;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 6px;
+      border-radius: 9999px;
+      border: none;
+      color: #ffffff !important;
+      background: linear-gradient(180deg, #2b2b2b 0%, #0a0a0a 100%);
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.32);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-sans, 'DM Sans', sans-serif);
+      transition:
+        transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+        background 0.2s ease;
+    }
+
+    .auth__submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.42);
+      background: linear-gradient(180deg, #383838 0%, #141414 100%);
+      color: #ffffff !important;
+    }
+
+    .auth__submit-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    /* Botón Google */
+    .auth__google-btn {
+      width: 100%;
+      height: 52px;
+      border-radius: 9999px;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      color: #374151;
+      font-family: var(--font-sans, 'DM Sans', sans-serif);
+      font-size: 0.98rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      margin-top: 4px;
+    }
+
+    .auth__google-btn:hover {
+      background: #f9fafb;
+      border-color: #d1d5db;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      transform: translateY(-1px);
+    }
+
+    .auth__google-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Divisor con "o" */
+    .auth__divider {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      gap: 16px;
+      margin: 10px 0;
+    }
+
+    .auth__divider::before,
+    .auth__divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #e5e7eb;
+    }
+
+    .auth__divider span {
+      font-size: 0.84rem;
+      color: #9ca3af;
+      font-weight: 500;
+      text-transform: lowercase;
+    }
+
+    /* Enlace Olvidé mi contraseña */
+    .auth__forgot-btn {
+      margin-top: 14px;
+      background: none;
+      border: none;
+      font-family: var(--font-sans, 'DM Sans', sans-serif);
+      font-size: 0.94rem;
+      font-weight: 500;
+      color: #6b7280;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.2s;
+      display: inline-block;
+    }
+
+    .auth__forgot-btn:hover {
+      color: #111827;
+      text-decoration: underline;
+    }
+
+    /* Switch link */
+    .auth__switch {
+      margin-top: 18px;
+      font-size: 0.92rem;
+      color: #6b7280;
+      line-height: 1.5;
+      text-align: center;
+    }
+
+    .auth__switch-link {
+      font-family: var(--font-sans, 'DM Sans', sans-serif);
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: #111827;
+      cursor: pointer;
+      text-decoration: none;
+      margin-left: 4px;
+      transition: color 0.2s;
+    }
+
+    .auth__switch-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Términos */
+    .auth__terms {
+      margin-top: 24px;
+      font-size: 0.78rem;
+      color: #6b7280;
+      line-height: 1.5;
+      max-width: 340px;
+      margin-inline: auto;
+      text-align: center;
+    }
+
+    .auth__terms-link {
+      color: #6b7280;
+      text-decoration: underline;
+      transition: color 0.2s;
+    }
+
+    .auth__terms-link:hover {
+      color: #111827;
+    }
+
+    /* Bottom Social Row */
+    .auth-panel-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding-top: 16px;
+    }
+    .auth-social-icon {
+      color: #94a3b8;
+      transition: all 0.15s ease;
+      display: grid;
+      place-items: center;
+      text-decoration: none;
+    }
+    .auth-social-icon:hover {
+      color: #090a0f;
+      transform: translateY(-2px);
+    }
+    .auth-social-icon svg {
+      width: 19px;
+      height: 19px;
+      fill: currentColor;
+    }
+
+    /* ══════════════════════════════════════════════
+       RIGHT SIDE: Wave Image Panel (Identical White Bevel Border)
+    ══════════════════════════════════════════════ */
+    .auth-right-container {
+      flex: 0 0 50%;
+      width: 50%;
+      min-height: 100vh;
+      padding: 14px 14px 14px 0;
+      display: flex;
+      background: #f8f9fa;
+    }
+
+    .auth-right-panel {
+      flex: 1;
+      width: 100%;
+      background: #f3f4f6;
+      border-radius: 26px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      box-shadow:
+        0 0 0 1px rgba(0, 0, 0, 0.04),
+        0 14px 38px -6px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Crisp white rim border identical to reference */
+    .auth-right-panel::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      border: 2.5px solid #ffffff;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.03);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .auth-wave-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      z-index: 1;
+      filter: none;
+    }
+
+    /* Clean Typography floating directly on the wallpaper (No box/container) */
+    .auth-hero-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 0 24px;
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .auth-hero-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+    }
+    .auth-hero-mark {
+      width: 92px;
+      height: 92px;
+      background: #ffffff;
+      border: 0;
+      border-radius: 25px;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+    }
+    .auth-hero-mark img { display: block; width: 70px; height: auto; }
+    .auth-hero-brand {
+      font-size: 1.4rem;
+      font-weight: 900;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #090a0f;
+      text-shadow: 0 1px 10px rgba(255, 255, 255, 0.8);
+    }
+
+    .auth-hero-title {
+      font-size: clamp(2.2rem, 3.2vw, 3rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+      color: #090a0f;
+      margin: 0;
+      text-shadow: 0 2px 16px rgba(255, 255, 255, 0.9);
+    }
+
+    .auth-hero-subtitle {
+      font-size: 1.05rem;
+      color: #1e293b;
+      line-height: 1.55;
+      margin: 4px 0 0;
+      font-weight: 500;
+      text-shadow: 0 1px 12px rgba(255, 255, 255, 0.9);
+    }
+
+    /* ══════════════════════════════════════════════
+       RESPONSIVE
+    ══════════════════════════════════════════════ */
+    @media (max-width: 960px) {
+      .auth-fullscreen {
+        flex-direction: column;
+      }
+      .auth-left-panel {
+        flex: 1;
+        width: 100%;
+        min-height: auto;
+        padding: 32px 24px;
+      }
+      .auth-right-container {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  {% if messages %}
+    <div class="messages" role="status" aria-live="polite">
+      {% for msg in messages %}
+        <div class="auth-alert auth-alert--{{ msg.tags }}">{{ msg }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <div class="auth-fullscreen">
+
+    <!-- LEFT SIDE: Form & Branding -->
+    <div class="auth-left-panel">
+
+      <!-- Top Row -->
+      <div class="auth-panel-top">
+        <a href="{% url 'store:home' %}" class="auth-close-btn" aria-label="Cerrar y volver al inicio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </a>
+      </div>
+
+      <!-- Main Form Block -->
+      <div class="auth-form-container">
+        {% block auth_content %}{% endblock %}
+      </div>
+
+      <!-- Bottom Social Row -->
+      <div class="auth-panel-bottom">
+        <a href="#" class="auth-social-icon" aria-label="X / Twitter">
+          <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+        </a>
+        <a href="#" class="auth-social-icon" aria-label="GitHub">
+          <svg viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        </a>
+        <a href="#" class="auth-social-icon" aria-label="LinkedIn">
+          <svg viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+        </a>
+        <a href="#" class="auth-social-icon" aria-label="Instagram">
+          <svg viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+        </a>
+      </div>
+
+    </div>
+
+    <!-- RIGHT SIDE: Monochrome Wave Image Panel with Centered Brand & Text -->
+    <div class="auth-right-container">
+      <div class="auth-right-panel">
+        <img src="{% static 'store/img/auth-wave.png' %}" alt="TechGear Wave" class="auth-wave-bg">
+
+        <!-- Centered logo directly on the wallpaper -->
+        <div class="auth-hero-content">
+          <div class="auth-hero-logo">
+            <span class="auth-hero-mark"><img src="{% static 'store/img/techgear-logo.png' %}" alt="Logo TechGear"></span>
+          </div>
+          <h2 class="auth-hero-title">
+            El futuro de la<br>robótica humanoide
+          </h2>
+          <p class="auth-hero-subtitle">
+            Inteligencia encarnada, precisión biónica e innovación de vanguardia diseñada para redefinir el mañana.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+      btn.setAttribute('aria-label', isPassword ? 'Ocultar contraseña' : 'Mostrar contraseña');
+      btn.innerHTML = isPassword
+        ? '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'
+        : '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      const form = document.querySelector('.auth__form');
+      if (!form) return;
+
+      const inputs = form.querySelectorAll('.auth__input');
+      const initiallyFocusedInput = form.contains(document.activeElement) ? document.activeElement : null;
+
+      function clearFieldError(input) {
+        const field = input.closest('.auth__field');
+        if (field) field.classList.remove('has-error');
+      }
+
+      function validateInput(input) {
+        const val = input.value.trim();
+        const field = input.closest('.auth__field');
+        if (!field) return true;
+
+        // 1. Campo obligatorio
+        if (!val) {
+          return false;
+        }
+
+        // 2. Correo electrónico válido (debe tener @ y formato válido de dominio)
+        const isEmailField = input.type === 'email' || input.name === 'email' || input.name === 'username' || input.id.toLowerCase().includes('email') || input.id.toLowerCase().includes('correo');
+        if (isEmailField) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(val)) {
+            return false;
+          }
+        }
+
+        // 3. Longitud mínima de contraseña en registro
+        if (input.type === 'password' && input.name === 'password') {
+          const isRegister = document.querySelector('input[name="password_confirm"]');
+          if (isRegister && val.length < 6) {
+            return false;
+          }
+        }
+
+        // 4. Coincidencia de contraseña en registro
+        if (input.name === 'password_confirm') {
+          const pwd = form.querySelector('input[name="password"]');
+          if (pwd && val !== pwd.value.trim()) {
+            return false;
+          }
+        }
+
+        return true;
+      }
+
+      function triggerError(field) {
+        if (!field) return;
+        field.classList.remove('has-error');
+        void field.offsetWidth; // Reflow para reiniciar la animación de temblor
+        field.classList.add('has-error');
+      }
+
+      // Al escribir, quitar el estado de error
+      inputs.forEach(input => {
+        input.addEventListener('focus', function() {
+          // El autofocus inicial no debe ocultar los errores del primer envío.
+          if (this !== initiallyFocusedInput) clearFieldError(this);
+        });
+
+        input.addEventListener('pointerdown', function() {
+          // Un clic/toque explícito sí devuelve el campo a su estilo normal.
+          clearFieldError(this);
+        });
+
+        input.addEventListener('input', function() {
+          clearFieldError(this);
+        });
+
+        // Validar también al perder el foco (blur) si tiene contenido inválido
+        input.addEventListener('blur', function() {
+          if (this.value.trim().length > 0 && !validateInput(this)) {
+            triggerError(this.closest('.auth__field'));
+          }
+        });
+      });
+
+      // Validación al enviar el formulario
+      form.addEventListener('submit', function(e) {
+        let hasError = false;
+        let firstInvalid = null;
+
+        inputs.forEach(input => {
+          const isFieldValid = validateInput(input);
+          const field = input.closest('.auth__field');
+          if (!isFieldValid) {
+            hasError = true;
+            triggerError(field);
+            if (!firstInvalid) firstInvalid = input;
+          } else if (field) {
+            field.classList.remove('has-error');
+          }
+        });
+
+        if (hasError) {
+          e.preventDefault();
+          if (firstInvalid) firstInvalid.focus();
+        }
+      });
+    });
+  </script>
+  <script>
+    document.querySelectorAll('.messages .auth-alert').forEach((notice) => {
+      window.setTimeout(() => {
+        notice.style.transition = 'opacity .35s ease';
+        notice.style.opacity = '0';
+        window.setTimeout(() => notice.remove(), 360);
+      }, 6500);
+    });
+  </script>
+</body>
+</html>

@@ -3,13 +3,15 @@ from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 
 class ProductModel(BaseModel):
-    name: str
-    description: str
-    price: float
-    stock: int
-    category: str
+    name: str = Field(min_length=1, max_length=160)
+    description: str = Field(min_length=1, max_length=2000)
+    price: float = Field(gt=0, allow_inf_nan=False)
+    stock: int = Field(ge=0, le=1_000_000)
+    category: str = Field(min_length=1, max_length=80)
     image: str = Field(
         ...,
+        min_length=1,
+        max_length=2000,
         validation_alias=AliasChoices("image", "image_url"),
         description="URL o ruta de la imagen del producto",
     )
@@ -30,13 +32,15 @@ class ProductModel(BaseModel):
 
 
 class ProductUpdateModel(BaseModel):
-    name: Optional[str] = None
-    description: Optional[str] = None
-    price: Optional[float] = None
-    stock: Optional[int] = None
-    category: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=160)
+    description: Optional[str] = Field(None, min_length=1, max_length=2000)
+    price: Optional[float] = Field(None, gt=0, allow_inf_nan=False)
+    stock: Optional[int] = Field(None, ge=0, le=1_000_000)
+    category: Optional[str] = Field(None, min_length=1, max_length=80)
     image: Optional[str] = Field(
         None,
+        min_length=1,
+        max_length=2000,
         validation_alias=AliasChoices("image", "image_url"),
         description="URL o ruta de la imagen del producto",
     )

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static store_tags %}
+
+{% block title %}TechGear{% endblock %}
+{% block body_class %}my-orders-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/orders.css' %}?v=2">{% endblock %}
+
+{% block content %}
+<main class="orders-shell container">
+  <header class="orders-heading">
+    <p class="eyebrow">Tu cuenta</p>
+    <h1>Mis pedidos</h1>
+    <p>Consulta los productos, el total y el estado de tus pedidos.</p>
+  </header>
+
+  {% if orders %}
+    <section class="customer-orders" aria-label="Historial de pedidos">
+      {% for order in orders %}
+        <article class="customer-order">
+          <header class="customer-order__header">
+            <div><span>Pedido</span><h2>{% if order.created_at %}{{ order.created_at|slice:":10" }}{% else %}Fecha no disponible{% endif %}</h2></div>
+            <span class="customer-order__status {% if order.status_key == 'cancelado' %}is-cancelled{% endif %}">{{ order.status_label }}</span>
+          </header>
+          {% if order.status_key == "cancelado" %}
+            <p class="customer-order__status-copy">{{ order.status_description }}</p>
+          {% else %}
+            <div class="customer-order__tracking">
+              <div class="customer-order__progress" role="progressbar" aria-label="Avance del pedido" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ order.status_progress }}"><span style="width: {{ order.status_progress }}%"></span></div>
+              <p>{{ order.status_description }}</p>
+              <ol aria-label="Etapas del pedido">
+                <li class="{% if order.status_progress >= 0 %}is-reached{% endif %}">Pendiente</li>
+                <li class="{% if order.status_progress >= 25 %}is-reached{% endif %}">Confirmado</li>
+                <li class="{% if order.status_progress >= 50 %}is-reached{% endif %}">Preparación</li>
+                <li class="{% if order.status_progress >= 75 %}is-reached{% endif %}">Enviado</li>
+                <li class="{% if order.status_progress >= 100 %}is-reached{% endif %}">Entregado</li>
+              </ol>
+            </div>
+          {% endif %}
+          <div class="customer-order__items">
+            {% if order.items %}
+              {% for item in order.items %}
+                <div class="customer-order__item">
+                  {% if item.image %}<img class="customer-order__image" src="{{ item.image }}" alt="{{ item.name }}" loading="lazy" onerror="this.style.display='none'">{% else %}<span class="customer-order__image customer-order__image--empty">{% icon "inventory_2" %}</span>{% endif %}
+                  <span class="customer-order__item-name">{{ item.quantity }} × {{ item.name }}</span><strong>{{ item.subtotal|cop_currency }}</strong>
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="customer-order__item"><span>{{ order.quantity }} × {{ order.product }}</span></div>
+            {% endif %}
+          </div>
+          <footer class="customer-order__footer"><span>Total del pedido</span><strong>{{ order.total_price|cop_currency }}</strong></footer>
+          {% if order.status|lower == "pendiente" %}
+            <form class="customer-order__cancel" method="post" action="{% url 'store:cancel_my_order' order.id %}">{% csrf_token %}<button type="submit">Cancelar pedido</button></form>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </section>
+  {% else %}
+    <section class="orders-empty">
+      <span>{% icon "receipt_long" %}</span>
+      <h2>Aún no tienes pedidos</h2>
+      <p>Cuando confirmes un pedido, podrás consultar su estado aquí.</p>
+      <a class="btn btn-primary" href="{% url 'store:catalog' %}">Explorar catálogo</a>
+    </section>
+  {% endif %}
+</main>
+{% endblock %}

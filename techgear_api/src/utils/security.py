@@ -21,6 +21,12 @@ load_dotenv()
 JWT_SECRET = os.getenv("JWT_SECRET", "techgear-dev-secret-cambia-esto-en-produccion")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "60"))
+if (os.getenv("APP_ENV", "development").strip().lower() == "production" or os.getenv("RENDER")) and (
+    len(JWT_SECRET) < 32 or JWT_SECRET == "techgear-dev-secret-cambia-esto-en-produccion"
+):
+    raise RuntimeError("En producción define JWT_SECRET con al menos 32 caracteres aleatorios.")
+if JWT_EXPIRE_MINUTES < 1:
+    raise RuntimeError("JWT_EXPIRE_MINUTES debe ser mayor que cero.")
 
 # Parámetros del algoritmo de hashing de contraseñas (PBKDF2-HMAC-SHA256)
 PASSWORD_HASH_ITERATIONS = 260_000
@@ -43,7 +49,7 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(plain_password: str, stored_password: str) -> bool:
-    """Verifica una contraseña contra un hash PBKDF2 o un valor en texto plano."""
+    """Verifica hashes PBKDF2 y temporalmente acepta texto plano para migrarlo al acceder."""
     if not stored_password:
         return False
 

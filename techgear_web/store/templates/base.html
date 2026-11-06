@@ -1,0 +1,227 @@
+{% load store_tags %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}TechGear{% endblock %}</title>
+  <meta name="description" content="TechGear: robots y tecnología inteligente para trabajar, aprender y explorar.">
+  <link rel="icon" type="image/png" sizes="512x512" href="{% static 'store/img/techgear-favicon.png' %}?v=2">
+  <link rel="apple-touch-icon" href="{% static 'store/img/techgear-favicon.png' %}?v=2">
+  <link rel="stylesheet" href="{% static 'store/css/style.css' %}?v=20261105-09">
+  <link rel="stylesheet" href="{% static 'store/css/lenis.css' %}?v=1.3.27">
+  {% block extra_css %}{% endblock %}
+  <style>
+    body .messages {
+      position: fixed !important;
+      top: calc(clamp(92px, 12vh, 148px) - 33px) !important;
+      right: auto !important;
+      bottom: auto !important;
+      left: 50% !important;
+      z-index: 3000 !important;
+      width: fit-content !important;
+      max-width: min(660px, calc(100vw - 32px)) !important;
+      align-items: center;
+      max-height: calc(100vh - 32px);
+      overflow: visible;
+      border: 0 !important;
+      outline: 0 !important;
+      background: transparent !important;
+      box-shadow: none !important;
+      transform: translateX(-50%);
+    }
+    body .messages .alert { width: fit-content; max-width: 100%; border: 0 !important; outline: 0 !important; border-radius: 9999px !important; }
+    body .messages .alert > span { min-width: 0; white-space: normal; }
+    @media (max-width: 700px) {
+      body .messages {
+        top: calc(env(safe-area-inset-top, 0px) + 16px) !important;
+        width: calc(100vw - 32px) !important;
+        max-width: 420px !important;
+        align-items: center;
+        gap: 10px;
+      }
+      body .messages .alert {
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: row;
+        width: fit-content !important;
+        max-width: 100% !important;
+        min-height: 46px;
+        padding: 11px 18px;
+        gap: 12px;
+        line-height: 1.2;
+        white-space: nowrap;
+      }
+      body .messages .alert > span {
+        flex: 1 1 auto;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap !important;
+      }
+      body .messages .alert .alert-close { flex: none; }
+    }
+    @media (max-width: 860px) {
+      body .nav { display: none !important; }
+      body.admin-dashboard-page .nav { display: none !important; }
+      body .mobile-dock { display: flex !important; }
+      body.admin-dashboard-page .site-main { padding-top: 16px !important; }
+      body.landing-page .hero { padding-top: 20px !important; }
+      body .mobile-dock__item--logout { color: #fff; }
+      body:not(.admin-dashboard-page) .site-main {
+        padding-bottom: calc(var(--dock-height) + 30px + env(safe-area-inset-bottom, 0px));
+      }
+      body.admin-dashboard-page .admin-dashboard {
+        padding-bottom: calc(var(--dock-height) + 28px + env(safe-area-inset-bottom, 0px)) !important;
+      }
+    }
+    @media (max-width: 560px) {
+      body .mobile-dock { width: calc(100% - 20px); bottom: max(8px, env(safe-area-inset-bottom, 8px)); }
+      body .mobile-dock__label { font-size: 9px; }
+    }
+  </style>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% block nav %}
+  <header class="nav" data-nav>
+    <div class="nav__inner">
+      <a class="nav__brand" data-flip href="{% url 'store:home' %}" aria-label="TechGear · Inicio">
+        <span class="nav__brand-mark" aria-hidden="true"><img src="{% static 'store/img/techgear-logo.png' %}" alt=""></span> TechGear
+      </a>
+
+      <nav class="nav__links" data-flip aria-label="Navegación principal">
+        <a href="{% url 'store:home' %}"
+           class="nav__link {% if request.resolver_match.url_name == 'home' %}is-active{% endif %}"
+           {% if request.resolver_match.url_name == 'home' %}aria-current="page"{% endif %}>Inicio</a>
+        <a href="{% url 'store:catalog' %}"
+           class="nav__link {% if request.resolver_match.url_name == 'catalog' or request.resolver_match.url_name == 'product_detail' %}is-active{% endif %}"
+           {% if request.resolver_match.url_name == 'catalog' or request.resolver_match.url_name == 'product_detail' %}aria-current="page"{% endif %}>Catálogo</a>
+        {% if request.session.user and request.session.user.role != "admin" and request.session.user.role != "administrador" %}
+        <a href="{% url 'store:my_orders' %}"
+           class="nav__link {% if request.resolver_match.url_name == 'my_orders' %}is-active{% endif %}"
+           {% if request.resolver_match.url_name == 'my_orders' %}aria-current="page"{% endif %}>Mis pedidos</a>
+        {% endif %}
+        {% if request.session.user.role == "administrador" or request.session.user.role == "admin" %}
+        <a href="{% url 'store:admin_dashboard' %}"
+           class="nav__link {% if request.resolver_match.url_name == 'admin_dashboard' %}is-active{% endif %}"
+           {% if request.resolver_match.url_name == 'admin_dashboard' %}aria-current="page"{% endif %}>Dashboard</a>
+        {% endif %}
+      </nav>
+
+      <div class="nav__actions" data-flip>
+        <a href="{% url 'store:cart' %}" class="user-pill" aria-label="Carrito, {{ cart_count|default:0 }} productos">
+          {% icon "shopping_cart" %}<span class="user-pill__name">Carrito{% if cart_count %} ({{ cart_count }}){% endif %}</span>
+        </a>
+        {% if request.session.user %}
+          <div class="user-pill" aria-label="Sesión iniciada">
+            <span class="user-pill__avatar" aria-hidden="true">{{ request.session.user.full_name|default:request.session.user.username|slice:":1"|upper }}</span>
+            <span class="user-pill__name">{{ request.session.user.full_name|default:request.session.user.username }}</span>
+          </div>
+          <a href="{% url 'store:logout' %}" class="user-pill__logout" aria-label="Cerrar sesión">
+            {% icon "logout" %}
+            <span>Salir</span>
+          </a>
+        {% else %}
+          <a href="{% url 'store:login' %}" class="btn nav__cta">
+            Iniciar sesión
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <nav class="mobile-dock" aria-label="Navegación móvil">
+    <a href="{% url 'store:home' %}"
+       class="mobile-dock__item {% if request.resolver_match.url_name == 'home' %}is-active{% endif %}">
+      {% icon "home" "mobile-dock__icon" %}
+      <span class="mobile-dock__label">Inicio</span>
+    </a>
+    <a href="{% url 'store:catalog' %}"
+       class="mobile-dock__item {% if request.resolver_match.url_name == 'catalog' or request.resolver_match.url_name == 'product_detail' %}is-active{% endif %}">
+      {% icon "storefront" "mobile-dock__icon" %}
+      <span class="mobile-dock__label">Catálogo</span>
+    </a>
+    <a href="{% url 'store:cart' %}" class="mobile-dock__item {% if request.resolver_match.url_name == 'cart' %}is-active{% endif %}">
+      {% icon "shopping_cart" "mobile-dock__icon" %}
+      <span class="mobile-dock__label">Carrito{% if cart_count %} · {{ cart_count }}{% endif %}</span>
+    </a>
+    {% if request.session.user and request.session.user.role != "admin" and request.session.user.role != "administrador" %}
+    <a href="{% url 'store:my_orders' %}" class="mobile-dock__item {% if request.resolver_match.url_name == 'my_orders' %}is-active{% endif %}">
+      {% icon "receipt_long" "mobile-dock__icon" %}
+      <span class="mobile-dock__label">Pedidos</span>
+    </a>
+    {% endif %}
+    {% if request.session.user.role == "administrador" or request.session.user.role == "admin" %}
+    <a href="{% url 'store:admin_dashboard' %}"
+       class="mobile-dock__item {% if request.resolver_match.url_name == 'admin_dashboard' %}is-active{% endif %}">
+      {% icon "dashboard" "mobile-dock__icon" %}
+      <span class="mobile-dock__label">Dashboard</span>
+    </a>
+    {% endif %}
+    {% if request.session.user %}
+    <a href="{% url 'store:logout' %}" class="mobile-dock__item mobile-dock__item--logout">
+      {% icon "logout" "mobile-dock__icon" %}
+      <span class="mobile-dock__label">Salir</span>
+    </a>
+    {% else %}
+    <a href="{% url 'store:login' %}" class="mobile-dock__item mobile-dock__item--cta {% if request.resolver_match.url_name == 'login' %}is-active{% endif %}">
+      {% icon "person" "mobile-dock__icon" %}
+      <span class="mobile-dock__label">Entrar</span>
+    </a>
+    {% endif %}
+  </nav>
+  {% endblock %}
+
+  {% if messages %}
+    <div class="messages">
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">
+          <span>{{ message }}</span>
+          <button type="button" class="alert-close" data-dismiss aria-label="Cerrar">&times;</button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <main class="site-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block footer %}
+    <footer class="footer" id="footer">
+      <div class="footer__body">
+        <h2 class="footer__headline">Encuentra tu próximo compañero inteligente</h2>
+        <a class="btn footer__btn" href="{% url 'store:catalog' %}">
+          Explorar
+        </a>
+
+        <nav class="footer__nav" aria-label="Navegación del pie de página">
+          <a href="{% url 'store:home' %}" class="footer__nav-link">Inicio</a>
+          <a href="{% url 'store:catalog' %}" class="footer__nav-link">Robots</a>
+        </nav>
+
+        <p class="footer__disclaimer">
+          Robots inteligentes para aprender, crear y transformar tu día a día.
+          Explora el catálogo y recibe asesoría cercana.
+        </p>
+      </div>
+
+      <div class="footer__watermark" aria-hidden="true">TechGear</div>
+      <div class="footer__fade" aria-hidden="true"></div>
+    </footer>
+  {% endblock %}
+
+  <button class="back-to-top" type="button" data-back-top aria-label="Volver arriba">
+    {% icon "arrow_upward" %}
+  </button>
+
+  <script src="{% static 'store/js/gsap.min.js' %}?v=3.15.0"></script>
+  <script src="{% static 'store/js/ScrollTrigger.min.js' %}?v=3.15.0"></script>
+  <script src="{% static 'store/js/ScrollToPlugin.min.js' %}?v=3.15.0"></script>
+  <script src="{% static 'store/js/Flip.min.js' %}?v=3.15.0"></script>
+  <script src="{% static 'store/js/lenis.min.js' %}?v=1.3.27"></script>
+  <script src="{% static 'store/js/main.js' %}?v=20261103-01"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

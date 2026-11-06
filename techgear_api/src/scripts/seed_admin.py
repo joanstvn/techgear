@@ -15,7 +15,7 @@ def main() -> None:
     )
     parser.add_argument("--username", default=os.getenv("ADMIN_USERNAME", "admin"))
     parser.add_argument("--email", default=os.getenv("ADMIN_EMAIL", "admin@techgear.com"))
-    parser.add_argument("--password", default=os.getenv("ADMIN_PASSWORD", "admin123"))
+    parser.add_argument("--password", default=os.getenv("ADMIN_PASSWORD"))
     parser.add_argument(
         "--full-name",
         default=os.getenv("ADMIN_FULL_NAME", "Administrador TechGear"),
@@ -26,6 +26,9 @@ def main() -> None:
         help="Actualiza la contraseña y el rol si el usuario ya existe.",
     )
     args = parser.parse_args()
+
+    if not args.password or len(args.password) < 12:
+        parser.error("Define ADMIN_PASSWORD o --password con al menos 12 caracteres.")
 
     email = args.email.lower()
     existing = users_collection.find_one(
@@ -55,7 +58,6 @@ def main() -> None:
         print(f"Usuario administrador '{args.username}' creado correctamente.")
 
     print(f"Email: {email}")
-    print(f"Contraseña: {args.password}")
 
 
 if __name__ == "__main__":

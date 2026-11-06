@@ -3,16 +3,16 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 class LoginModel(BaseModel):
     username: str = Field(
-        ...,
+        ..., min_length=1, max_length=150,
         description="Nombre de usuario o correo electrónico registrado",
     )
-    password: str = Field(..., description="Contraseña del usuario")
+    password: str = Field(..., min_length=1, max_length=128, description="Contraseña del usuario")
 
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
-                "username": "admin",
-                "password": "admin123",
+                "username": "usuario",
+                "password": "contraseña_segura",
             }
         }
     )

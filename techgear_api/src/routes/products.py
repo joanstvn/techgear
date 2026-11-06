@@ -1,8 +1,9 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.database.database import products_collection
 from src.models.product import ProductModel, ProductUpdateModel
 from src.utils.mongo import serialize_doc, validate_object_id
+from src.utils.security import require_admin
 
 router = APIRouter()
 
@@ -13,7 +14,7 @@ router = APIRouter()
     summary="Crear un nuevo producto",
     description="Registra un nuevo producto en la base de datos.",
 )
-def create_product(product: ProductModel):
+def create_product(product: ProductModel, current_user: dict = Depends(require_admin)):
     product_dict = product.model_dump()
     result = products_collection.insert_one(product_dict)
     created_product = products_collection.find_one({"_id": result.inserted_id})
@@ -54,7 +55,7 @@ def get_product(id: str):
     summary="Actualizar un producto",
     description="Actualiza uno o varios campos de un producto existente.",
 )
-def update_product(id: str, product_data: ProductUpdateModel):
+def update_product(id: str, product_data: ProductUpdateModel, current_user: dict = Depends(require_admin)):
     obj_id = validate_object_id(id)
     update_data = product_data.model_dump(exclude_unset=True)
     update_data = {k: v for k, v in update_data.items() if v is not None}
@@ -86,7 +87,7 @@ def update_product(id: str, product_data: ProductUpdateModel):
     summary="Eliminar un producto",
     description="Elimina un producto existente por su ID.",
 )
-def delete_product(id: str):
+def delete_product(id: str, current_user: dict = Depends(require_admin)):
     obj_id = validate_object_id(id)
     result = products_collection.delete_one({"_id": obj_id})
     if result.deleted_count == 0:

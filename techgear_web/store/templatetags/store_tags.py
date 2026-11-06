@@ -15,3 +15,14 @@ def icon(name, css_class=""):
         static("store/img/icons.svg"),
         name,
     )
+
+
+@register.filter
+def cop_currency(value):
+    """Formatea valores numéricos en formato de moneda colombiana COP ($ 1.250.000)."""
+    try:
+        val = float(value)
+        formatted = f"{int(round(val)):,}".replace(",", ".")
+        return f"${formatted} COP"
+    except (ValueError, TypeError):
+        return f"${value} COP"

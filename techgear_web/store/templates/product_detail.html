@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% load store_tags %}
+{% load static %}
+
+{% block title %}TechGear{% endblock %}
+{% block body_class %}detail-page{% endblock %}
+
+{% block content %}
+<div class="container detail-shell">
+  <div class="detail-top-nav reveal">
+    <a class="back-link" href="{% url 'store:catalog' %}">
+      {% icon "arrow_back" %}
+      Volver al catálogo
+    </a>
+  </div>
+
+  <section class="detail-grid">
+    {% static 'store/img/placeholder.svg' as placeholder_img %}
+    <div class="detail-media reveal">
+      {% if product.image %}
+        <img src="{{ product.image }}" alt="{{ product.name }}" loading="eager"
+             onerror="this.onerror=null;this.src='{{ placeholder_img }}';">
+      {% else %}
+        <img src="{{ placeholder_img }}" alt="{{ product.name }}">
+      {% endif %}
+    </div>
+
+    <div class="detail-info reveal">
+      <div class="detail-header-group">
+        <div class="detail-badges">
+          <span class="badge badge-category">{{ product.category }}</span>
+          {% if product.stock|add:"0" <= 0 %}
+            <span class="badge badge-danger">Agotado</span>
+          {% elif product.stock|add:"0" < 5 %}
+            <span class="badge badge-warning"><span class="badge-dot"></span> Últimas {{ product.stock }} unidades</span>
+          {% else %}
+            <span class="badge badge-success"><span class="badge-dot"></span> {{ product.stock }} disponibles</span>
+          {% endif %}
+        </div>
+        <h1 class="detail-title">{{ product.name }}</h1>
+        <div class="detail-price-row">
+          <span class="price price-lg">{{ product.price|cop_currency }}</span>
+        </div>
+      </div>
+
+      <p class="detail-description">{{ product.description }}</p>
+
+      <div class="detail-perks">
+        <div class="detail-perk">
+          <div class="detail-perk__icon">
+            {% icon "verified" %}
+          </div>
+          <div class="detail-perk__text">
+            <strong>Garantía</strong>
+            <span>de 1 año</span>
+          </div>
+        </div>
+        <div class="detail-perk__divider"></div>
+        <div class="detail-perk">
+          <div class="detail-perk__icon">
+            {% icon "local_shipping" %}
+          </div>
+          <div class="detail-perk__text">
+            <strong>Envío a todo</strong>
+            <span>el país</span>
+          </div>
+        </div>
+        <div class="detail-perk__divider"></div>
+        <div class="detail-perk">
+          <div class="detail-perk__icon">
+            {% icon "lock" %}
+          </div>
+          <div class="detail-perk__text">
+            <strong>Compra</strong>
+            <span>segura</span>
+          </div>
+        </div>
+      </div>
+
+      {% if product.stock|add:"0" > 0 %}
+        <div class="order-card-ref">
+          <form class="order-form-ref" method="post" action="{% url 'store:cart_add' product.id %}" data-order-form data-unit-price="{{ product.price }}">
+            {% csrf_token %}
+            {% if form.non_field_errors %}<div class="alert alert-error" role="alert">{{ form.non_field_errors.0 }}</div>{% endif %}
+
+            <div class="order-box-grid">
+              <div class="order-qty-col">
+                <span class="order-box-label">Selecciona la cantidad</span>
+                <div class="quantity-control-ref" data-quantity-control>
+                  <button type="button" class="quantity-btn-ref" data-quantity-step="-1" aria-label="Disminuir cantidad">−</button>
+                  {{ form.quantity }}
+                  <button type="button" class="quantity-btn-ref" data-quantity-step="1" aria-label="Aumentar cantidad">+</button>
+                </div>
+              </div>
+
+              <div class="order-box-divider"></div>
+
+              <div class="order-total-col">
+                <span class="order-box-label">Total</span>
+                <strong class="order-total-price" data-order-total>{{ product.price|cop_currency }}</strong>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block buy-now-btn">
+              Añadir al carrito
+              {% icon "shopping_cart" %}
+            </button>
+          </form>
+
+          <div class="order-trust-footer">
+            {% icon "verified" %}
+            <span>Compra segura · Atención personalizada</span>
+          </div>
+        </div>
+      {% else %}
+        <div class="alert alert-warning">Este producto se encuentra agotado por el momento.</div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

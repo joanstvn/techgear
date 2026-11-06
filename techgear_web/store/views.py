@@ -1,47 +1,90 @@
 from django.contrib import messages
+from django.conf import settings
 from django.core.validators import MaxValueValidator
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils import timezone
+from functools import wraps
+from urllib.parse import urlencode
 from django.views.decorators.http import require_POST
+import requests
 
 from store import api
-from store.decorators import (
-    admin_required_session,
-    get_access_token,
-    get_session_user,
-)
 from store.forms import (
+    AdminProductForm,
+    AdminUserForm,
     LoginForm,
     OrderForm,
-    OrderStatusForm,
     PasswordResetRequestForm,
-    ProductForm,
     RegisterForm,
-    SetPasswordForm,
-    UserForm,
 )
 
+ORDER_STATUS_LABELS = {
+    "pendiente": "Pendiente",
+    "confirmado": "Confirmado",
+    "en_preparacion": "En preparación",
+    "enviado": "Enviado",
+    "entregado": "Entregado",
+    "cancelado": "Cancelado",
+}
+ORDER_STATUS_NEXT = {
+    "pendiente": ("confirmado", "cancelado"),
+    "confirmado": ("en_preparacion", "cancelado"),
+    "en_preparacion": ("enviado", "cancelado"),
+    "enviado": ("entregado",),
+    "entregado": (),
+    "cancelado": (),
+}
+ORDER_STATUS_FLOW = ("pendiente", "confirmado", "en_preparacion", "enviado", "entregado")
+ORDER_STATUS_DESCRIPTIONS = {
+    "pendiente": "Tu solicitud fue recibida y está pendiente de revisión.",
+    "confirmado": "El equipo confirmó tu pedido y coordinará contigo el pago y la entrega.",
+    "en_preparacion": "Estamos preparando los productos de tu pedido.",
+    "enviado": "Tu pedido fue enviado.",
+    "entregado": "Tu pedido figura como entregado.",
+    "cancelado": "Este pedido fue cancelado.",
+}
 
-def _handle_api_error(request, error: api.ApiError):
-    """Muestra el error de la API y cierra la sesión si el token expiró."""
-    if error.status_code == 401 and get_access_token(request):
-        request.session.flush()
-        messages.error(request, "Tu sesión expiró. Inicia sesión nuevamente.")
-        return redirect("store:login")
-    messages.error(request, error.message)
-    return None
 
-
-def _safe_next_url(request) -> str | None:
-    next_url = request.POST.get("next") or request.GET.get("next")
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
+def _safe_next_url(request, candidate):
+    candidate = (candidate or '').strip()
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate,
         allowed_hosts={request.get_host()},
         require_https=request.is_secure(),
     ):
-        return next_url
-    return None
+        return candidate
+    return ''
+
+
+def _order_status_key(value):
+    key = str(value or "pendiente").strip().lower().replace(" ", "_")
+    return {
+        "en_preparación": "en_preparacion",
+        "completado": "entregado",
+        "completada": "entregado",
+        "completed": "entregado",
+        "cancelled": "cancelado",
+        "canceled": "cancelado",
+    }.get(key, key)
+
+
+def _decorate_order_status(order, include_options=False):
+    order = dict(order)
+    key = _order_status_key(order.get("status"))
+    order["status_key"] = key
+    order["status_label"] = ORDER_STATUS_LABELS.get(key, str(order.get("status") or "Pendiente").capitalize())
+    order["status_description"] = ORDER_STATUS_DESCRIPTIONS.get(key, "Consulta aquí las novedades de tu pedido.")
+    order["status_progress"] = round((ORDER_STATUS_FLOW.index(key) / (len(ORDER_STATUS_FLOW) - 1)) * 100) if key in ORDER_STATUS_FLOW else 0
+    if include_options:
+        option_keys = (key,) + ORDER_STATUS_NEXT.get(key, ())
+        order["status_options"] = [
+            {"value": option, "label": ORDER_STATUS_LABELS[option], "selected": option == key}
+            for option in option_keys
+        ]
+        order["can_update_status"] = bool(ORDER_STATUS_NEXT.get(key, ()))
+    return order
 
 
 def _productos_y_categorias():
@@ -49,7 +92,7 @@ def _productos_y_categorias():
     try:
         products = api.list_products()
     except api.ApiError:
-        products = []
+        return [], 0, True
     categories = sorted(
         {product.get("category", "") for product in products if product.get("category")}
     )
@@ -65,97 +108,14 @@ def home(request):
 
     return render(
         request,
-        "store/landing.html",
+        "landing.html",
         {
-            "featured_products": products[:4],
+            "featured_products": products[:3],
             "total_products": len(products),
             "total_categories": len(categories),
             "in_stock": en_stock,
         },
     )
-
-
-# Autenticación
-
-
-def auth_portal_view(request):
-    return render(
-        request,
-        "store/auth_portal.html",
-        {"next": _safe_next_url(request) or ""},
-    )
-
-
-def login_view(request):
-    if get_access_token(request):
-        if (get_session_user(request) or {}).get("role", "").lower() in {"admin", "administrador"}:
-            return redirect("store:panel")
-        return redirect("store:catalog")
-
-    form = LoginForm(request.POST or None)
-
-    if request.method == "POST" and form.is_valid():
-        try:
-            data = api.login(
-                form.cleaned_data["username"],
-                form.cleaned_data["password"],
-            )
-        except api.ApiError as error:
-            messages.error(request, error.message)
-        else:
-            request.session.cycle_key()
-            request.session["access_token"] = data["access_token"]
-            request.session["user"] = data["user"]
-            request.session["is_admin"] = str(data["user"].get("role", "")).lower() in {
-                "admin",
-                "administrador",
-            }
-            messages.success(
-                request,
-                f"Bienvenido de nuevo, {data['user'].get('full_name') or data['user'].get('username')}.",
-            )
-            next_url = _safe_next_url(request)
-            if next_url:
-                return redirect(next_url)
-            return redirect("store:panel" if request.session["is_admin"] else "store:catalog")
-
-    return render(request, "store/login.html", {"form": form, "next": _safe_next_url(request) or ""})
-
-
-def register_view(request):
-    form = RegisterForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
-        try:
-            registration_data = {
-                key: value
-                for key, value in form.cleaned_data.items()
-                if key != "password_confirm"
-            }
-            api.register(registration_data)
-        except api.ApiError as error:
-            form.add_error(None, error.message)
-        else:
-            messages.success(request, "Tu cuenta quedó creada. Inicia sesión para continuar.")
-            return redirect("store:login")
-    return render(request, "store/register.html", {"form": form})
-
-
-def password_reset_request_view(request):
-    return render(request, "store/password_reset_request.html", {"form": PasswordResetRequestForm()})
-
-
-def password_reset_confirm_view(request):
-    return render(
-        request,
-        "store/password_reset_confirm.html",
-        {"form": SetPasswordForm(), "token": request.GET.get("token", "")},
-    )
-
-
-def logout_view(request):
-    request.session.flush()
-    messages.success(request, "Sesión cerrada correctamente.")
-    return redirect("store:catalog")
 
 
 # Catálogo público
@@ -188,7 +148,7 @@ def catalog(request):
 
     return render(
         request,
-        "store/catalog.html",
+        "catalog.html",
         {
             "products": products,
             "categories": categories,
@@ -205,65 +165,175 @@ def product_detail(request, id: str):
         messages.error(request, error.message)
         return redirect("store:catalog")
 
-    session_user = get_session_user(request) or {}
-    form = _order_form_for_product(
-        request.POST or None,
-        product,
-        initial={
-            "customer_name": session_user.get("full_name") or session_user.get("username", ""),
-            "customer_email": session_user.get("email", ""),
-        },
-    )
+    form = _order_form_for_product(request.POST or None, product)
     return render(
         request,
-        "store/product_detail.html",
-        {"product": product, "form": form},
+        "product_detail.html",
+        {"product": product, "form": form, "cart_count": _cart_count(request)},
     )
+
+
+def _cart_count(request):
+    return sum(max(0, int(quantity)) for quantity in (request.session.get("cart") or {}).values())
+
+
+def cart_context(request):
+    return {"cart_count": _cart_count(request)}
+
+
+def _cart_products(request):
+    cart = request.session.get("cart") or {}
+    try:
+        products = api.list_products()
+    except api.ApiError:
+        products = []
+    by_id = {}
+    for product in products:
+        product.setdefault("image", product.get("image_url") or "")
+        by_id[str(product.get("id"))] = product
+    rows = []
+    cleaned_cart = {}
+    total = 0.0
+    for product_id, raw_quantity in cart.items():
+        product = by_id.get(str(product_id))
+        if not product:
+            continue
+        try:
+            quantity = max(1, int(raw_quantity))
+            stock = max(0, int(product.get("stock") or 0))
+        except (TypeError, ValueError):
+            continue
+        if stock < 1:
+            continue
+        quantity = min(quantity, stock)
+        price = float(product.get("price") or 0)
+        subtotal = round(price * quantity, 2)
+        cleaned_cart[str(product_id)] = quantity
+        rows.append({"product": product, "quantity": quantity, "subtotal": subtotal})
+        total += subtotal
+    if cleaned_cart != cart:
+        request.session["cart"] = cleaned_cart
+    return rows, round(total, 2), False
+
+
+def cart_view(request):
+    rows, total, cart_unavailable = _cart_products(request)
+    return render(request, "cart.html", {
+        "cart_rows": rows,
+        "cart_total": total,
+        "cart_count": _cart_count(request),
+        "cart_unavailable": cart_unavailable,
+    })
 
 
 @require_POST
-def create_order(request, id: str):
+def cart_add(request, id: str):
     try:
         product = api.get_product(id)
     except api.ApiError as error:
         messages.error(request, error.message)
         return redirect("store:catalog")
-
-    form = _order_form_for_product(request.POST, product)
-    if not form.is_valid():
-        return render(
-            request,
-            "store/product_detail.html",
-            {"product": product, "form": form},
-        )
-
-    quantity = form.cleaned_data["quantity"]
-    total_price = round(float(product.get("price", 0)) * quantity, 2)
-
     try:
-        api.create_order(
-            {
-                "customer_name": form.cleaned_data["customer_name"],
-                "customer_email": form.cleaned_data["customer_email"],
-                "product": product.get("name"),
-                "quantity": quantity,
-                "total_price": total_price,
-                "status": "pendiente",
-            }
-        )
+        stock = max(0, int(product.get("stock") or 0))
+        quantity = max(1, int(request.POST.get("quantity", "1")))
+    except (TypeError, ValueError):
+        stock, quantity = 0, 1
+    if stock < 1:
+        messages.error(request, "Este producto no tiene unidades disponibles.")
+        return redirect("store:product_detail", id=id)
+    cart = request.session.get("cart") or {}
+    cart[id] = min(stock, int(cart.get(id, 0)) + quantity)
+    request.session["cart"] = cart
+    product_name = product.get("name", "Producto")
+    if request.session.get("user") and request.session.get("token"):
+        messages.success(request, f"{product_name} se añadió al carrito.")
+    return redirect("store:cart")
+
+
+@require_POST
+def cart_update(request, id: str):
+    cart = request.session.get("cart") or {}
+    if id not in cart:
+        return redirect("store:cart")
+    try:
+        quantity = int(request.POST.get("quantity", "1"))
+        product = api.get_product(id)
+        stock = max(0, int(product.get("stock") or 0))
+    except (ValueError, TypeError, api.ApiError):
+        messages.error(request, "No se pudo actualizar la cantidad.")
+        return redirect("store:cart")
+    if quantity < 1:
+        cart.pop(id, None)
+    elif stock < 1:
+        cart.pop(id, None)
+        messages.error(request, "El producto ya no tiene unidades disponibles.")
+    else:
+        cart[id] = min(quantity, stock)
+    request.session["cart"] = cart
+    return redirect("store:cart")
+
+
+@require_POST
+def cart_remove(request, id: str):
+    cart = request.session.get("cart") or {}
+    cart.pop(id, None)
+    request.session["cart"] = cart
+    return redirect("store:cart")
+
+
+@require_POST
+def cart_checkout(request):
+    user = request.session.get("user") or {}
+    token = request.session.get("token", "")
+    if not user or not token:
+        next_url = urlencode({"next": reverse("store:cart")})
+        return redirect(f"{reverse('store:login')}?{next_url}")
+    cart = request.session.get("cart") or {}
+    if not cart:
+        messages.error(request, "Tu carrito está vacío.")
+        return redirect("store:cart")
+    items = [{"product_id": product_id, "quantity": quantity} for product_id, quantity in cart.items()]
+    try:
+        api.create_cart_order({"items": items}, token)
     except api.ApiError as error:
         messages.error(request, error.message)
-        return render(
-            request,
-            "store/product_detail.html",
-            {"product": product, "form": form},
-        )
+        return redirect("store:cart")
+    request.session["cart"] = {}
+    messages.success(request, "Recibimos tu pedido. Puedes seguir su estado en Mis pedidos; coordinaremos contigo el pago y la entrega.")
+    return redirect("store:my_orders")
 
-    messages.success(
-        request,
-        f"Pedido de {quantity} unidad(es) de '{product.get('name')}' registrado correctamente.",
-    )
-    return redirect("store:product_detail", id=id)
+
+def my_orders(request):
+    if not request.session.get("user") or not request.session.get("token"):
+        next_url = urlencode({"next": reverse("store:my_orders")})
+        return redirect(f"{reverse('store:login')}?{next_url}")
+    try:
+        orders = api.list_my_orders(request.session["token"])
+    except api.ApiError as error:
+        messages.error(request, error.message)
+        orders = []
+    orders = [_decorate_order_status(order) for order in orders]
+    return render(request, "my_orders.html", {"orders": orders})
+
+
+@require_POST
+def cancel_my_order(request, id: str):
+    if not request.session.get("user") or not request.session.get("token"):
+        next_url = urlencode({"next": reverse("store:my_orders")})
+        return redirect(f"{reverse('store:login')}?{next_url}")
+    try:
+        api.cancel_my_order(id, request.session["token"])
+        messages.success(request, "El pedido se canceló correctamente.")
+    except api.ApiError as error:
+        messages.error(request, error.message)
+    return redirect("store:my_orders")
+
+
+@require_POST
+def create_order(request, id: str):
+    # Ruta antigua: convierte la intención de compra en una acción de carrito,
+    # nunca registra un pedido sin pasar por la revisión y confirmación del carrito.
+    return cart_add(request, id)
 
 
 def _order_form_for_product(data, product, initial=None):
@@ -278,301 +348,302 @@ def _order_form_for_product(data, product, initial=None):
     return form
 
 
-# Panel de catálogo (requiere sesión)
+def admin_required(view):
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        user = request.session.get("user") or {}
+        if not user:
+            return redirect(f"{reverse('store:login')}?next={reverse('store:admin_dashboard')}")
+        if str(user.get("role", "")).lower() not in {"admin", "administrador"}:
+            messages.error(request, "Esta sección está disponible solo para administradores.")
+            return redirect("store:home")
+        return view(request, *args, **kwargs)
+    return wrapped
 
 
-@admin_required_session
-def panel_catalog(request):
+@admin_required
+def admin_dashboard(request):
+    api_error = False
     try:
         products = api.list_products()
     except api.ApiError as error:
-        response = _handle_api_error(request, error)
-        if response:
-            return response
+        messages.error(request, error.message)
         products = []
-
-    return render(request, "store/panel/catalog.html", {"products": products})
-
-
-@admin_required_session
-def product_create(request):
-    form = ProductForm(request.POST or None)
-
-    if request.method == "POST" and form.is_valid():
-        try:
-            api.create_product(form.to_api_data(), token=get_access_token(request))
-        except api.ApiError as error:
-            response = _handle_api_error(request, error)
-            if response:
-                return response
-        else:
-            messages.success(request, "Producto creado correctamente.")
-            return redirect("store:panel")
-
-    return render(
-        request,
-        "store/panel/product_form.html",
-        {"form": form, "title": "Nuevo producto", "submit_label": "Crear producto"},
-    )
-
-
-@admin_required_session
-def product_edit(request, id: str):
+        api_error = True
     try:
-        product = api.get_product(id)
+        users = api.list_users(request.session.get("token", ""))
     except api.ApiError as error:
-        response = _handle_api_error(request, error)
-        if response:
-            return response
-        return redirect("store:panel")
-
-    initial = {
-        "name": product.get("name"),
-        "description": product.get("description"),
-        "price": product.get("price"),
-        "stock": product.get("stock"),
-        "category": product.get("category"),
-        "image": product.get("image"),
-    }
-    form = ProductForm(request.POST or None, initial=initial)
-
-    if request.method == "POST" and form.is_valid():
-        try:
-            api.update_product(id, form.to_api_data(), token=get_access_token(request))
-        except api.ApiError as error:
-            response = _handle_api_error(request, error)
-            if response:
-                return response
-        else:
-            messages.success(request, "Producto actualizado correctamente.")
-            return redirect("store:panel")
-
-    return render(
-        request,
-        "store/panel/product_form.html",
-        {"form": form, "product": product, "title": "Editar producto", "submit_label": "Guardar cambios"},
-    )
-
-
-@require_POST
-@admin_required_session
-def product_delete(request, id: str):
-    try:
-        api.delete_product(id, token=get_access_token(request))
-    except api.ApiError as error:
-        response = _handle_api_error(request, error)
-        if response:
-            return response
-    else:
-        messages.success(request, "Producto eliminado correctamente.")
-    return redirect("store:panel")
-
-
-# Panel de administración (requiere rol administrador)
-
-
-@admin_required_session
-def panel_admin(request):
-    stats = {
-        "products": 0,
-        "users": 0,
-        "orders": 0,
-        "pending": 0,
-        "revenue": 0,
-        "stock_units": 0,
-        "low_stock": 0,
-        "out_of_stock": 0,
-    }
-    products = []
-    users = []
-    orders = []
-    api_available = True
-
-    try:
-        products = api.list_products()
-        stats["products"] = len(products)
-    except api.ApiError:
-        api_available = False
-
-    try:
-        users = api.list_users(get_access_token(request))
-        stats["users"] = len(users)
-    except api.ApiError as error:
-        if error.status_code == 401:
-            return _handle_api_error(request, error) or redirect("store:login")
-        api_available = False
-
-    try:
-        orders = api.list_orders()
-        stats["orders"] = len(orders)
-        stats["pending"] = sum(
-            1 for order in orders if str(order.get("status", "")).lower() == "pendiente"
-        )
-        stats["revenue"] = sum(float(order.get("total_price") or 0) for order in orders)
-    except (api.ApiError, TypeError, ValueError):
-        api_available = False
-
-    stock_values = []
-    for product in products:
-        try:
-            stock = max(0, int(product.get("stock") or 0))
-        except (TypeError, ValueError):
-            stock = 0
-        stock_values.append((stock, product))
-        stats["stock_units"] += stock
-
-    stats["low_stock"] = sum(1 for stock, _ in stock_values if 0 < stock <= 5)
-    stats["out_of_stock"] = sum(1 for stock, _ in stock_values if stock == 0)
-    low_stock_products = [
-        {**product, "stock": stock}
-        for stock, product in sorted(stock_values, key=lambda item: item[0])
-        if stock <= 5
-    ][:5]
-
-    return render(
-        request,
-        "store/panel/dashboard.html",
-        {
-            "stats": stats,
-            "recent_orders": orders[-4:][::-1],
-            "low_stock_products": low_stock_products,
-            "api_available": api_available,
-        },
-    )
-
-
-@admin_required_session
-def user_list(request):
-    try:
-        users = api.list_users(get_access_token(request))
-    except api.ApiError as error:
-        response = _handle_api_error(request, error)
-        if response:
-            return response
+        messages.error(request, error.message)
         users = []
-
-    return render(
-        request,
-        "store/panel/users.html",
-        {"users": users, "current_user_id": (get_session_user(request) or {}).get("id")},
-    )
-
-
-@admin_required_session
-def user_create(request):
-    form = UserForm(request.POST or None, require_password=True)
-
-    if request.method == "POST" and form.is_valid():
-        try:
-            api.create_user(form.to_api_data(), token=get_access_token(request))
-        except api.ApiError as error:
-            response = _handle_api_error(request, error)
-            if response:
-                return response
-        else:
-            messages.success(request, "Usuario creado correctamente.")
-            return redirect("store:users")
-
-    return render(
-        request,
-        "store/panel/user_form.html",
-        {"form": form, "title": "Nuevo usuario", "submit_label": "Crear usuario"},
-    )
-
-
-@admin_required_session
-def user_edit(request, id: str):
+        api_error = True
     try:
-        user = api.get_user(id, get_access_token(request))
+        orders = api.list_orders(request.session.get("token", ""))
     except api.ApiError as error:
-        response = _handle_api_error(request, error)
-        if response:
-            return response
-        return redirect("store:users")
-
-    initial = {
-        "username": user.get("username"),
-        "email": user.get("email"),
-        "full_name": user.get("full_name"),
-        "role": "administrador"
-        if str(user.get("role", "")).lower() in {"admin", "administrador"}
-        else "cliente",
-    }
-    form = UserForm(request.POST or None, initial=initial, require_password=False)
-
-    if request.method == "POST" and form.is_valid():
-        try:
-            api.update_user(id, form.to_api_data(), token=get_access_token(request))
-        except api.ApiError as error:
-            response = _handle_api_error(request, error)
-            if response:
-                return response
-        else:
-            if (get_session_user(request) or {}).get("id") == id:
-                request.session["user"] = api.get_user(id, get_access_token(request))
-                request.session["is_admin"] = request.session["user"].get("role") in {
-                    "admin",
-                    "administrador",
-                }
-            messages.success(request, "Usuario actualizado correctamente.")
-            return redirect("store:users")
-
-    return render(
-        request,
-        "store/panel/user_form.html",
-        {"form": form, "user": user, "title": "Editar usuario", "submit_label": "Guardar cambios"},
-    )
-
-
-@require_POST
-@admin_required_session
-def user_delete(request, id: str):
-    if (get_session_user(request) or {}).get("id") == id:
-        messages.error(request, "No puedes eliminar tu propio usuario.")
-        return redirect("store:users")
-
-    try:
-        api.delete_user(id, get_access_token(request))
-    except api.ApiError as error:
-        response = _handle_api_error(request, error)
-        if response:
-            return response
-    else:
-        messages.success(request, "Usuario eliminado correctamente.")
-    return redirect("store:users")
-
-
-@admin_required_session
-def order_list(request):
-    try:
-        orders = api.list_orders()
-    except api.ApiError as error:
-        response = _handle_api_error(request, error)
-        if response:
-            return response
+        messages.error(request, error.message)
         orders = []
+        api_error = True
+    orders = [_decorate_order_status(order, include_options=True) for order in orders]
+    return render(request, "admin/dashboard.html", {
+        "products": products,
+        "users": users,
+        "orders": orders,
+        "total_products": len(products),
+        "total_users": len(users),
+        "total_orders": len(orders),
+        "total_stock": sum(max(0, int(product.get("stock") or 0)) for product in products),
+        "total_categories": len({product.get("category") for product in products if product.get("category")}),
+        "api_error": api_error,
+        "today": timezone.localdate(),
+        "product_form": AdminProductForm(),
+        "user_form": AdminUserForm(),
+    })
+
+
+def _admin_section_redirect(section: str):
+    return redirect(f"{reverse('store:admin_dashboard')}?section={section}")
+
+
+@admin_required
+@require_POST
+def admin_update_order_status(request, id: str):
+    requested_status = request.POST.get("status", "")
+    if requested_status not in ORDER_STATUS_LABELS:
+        messages.error(request, "Selecciona un estado válido para el pedido.")
+        return redirect(f"{reverse('store:admin_dashboard')}?section=orders")
+    try:
+        api.update_order_status(id, requested_status, request.session.get("token", ""))
+        messages.success(request, "El estado del pedido se actualizó correctamente.")
+    except api.ApiError as error:
+        messages.error(request, error.message)
+    return redirect(f"{reverse('store:admin_dashboard')}?section=orders")
+
+
+def _upload_product_image(uploaded_file):
+    cloud_name = settings.CLOUDINARY_CLOUD_NAME
+    api_key = settings.CLOUDINARY_API_KEY
+    api_secret = settings.CLOUDINARY_API_SECRET
+    if not all((cloud_name, api_key, api_secret)):
+        raise api.ApiError(
+            "La carga de archivos requiere configurar Cloudinary en las variables de entorno."
+        )
+
+    try:
+        response = requests.post(
+            f"https://api.cloudinary.com/v1_1/{cloud_name}/image/upload",
+            auth=(api_key, api_secret),
+            data={"folder": "techgear/products"},
+            files={
+                "file": (
+                    uploaded_file.name,
+                    uploaded_file.file,
+                    uploaded_file.content_type,
+                )
+            },
+            timeout=(5, 45),
+        )
+        response.raise_for_status()
+        image_url = response.json().get("secure_url")
+    except (requests.RequestException, ValueError):
+        raise api.ApiError("No se pudo subir la imagen. Revisa el archivo e inténtalo de nuevo.")
+
+    if not image_url:
+        raise api.ApiError("El servicio de imágenes no devolvió una URL válida.")
+    return image_url
+
+
+def _product_data(form):
+    data = form.cleaned_data.copy()
+    uploaded_file = data.pop("image_file", None)
+    image_url = data.pop("image_url", "")
+    data["image"] = _upload_product_image(uploaded_file) if uploaded_file else image_url
+    data["price"] = float(data["price"])
+    return data
+
+
+@admin_required
+@require_POST
+def admin_create_product(request):
+    form = AdminProductForm(request.POST, request.FILES)
+    if form.is_valid():
+        try:
+            data = _product_data(form)
+            api.create_product(data, request.session.get("token", ""))
+            messages.success(request, "El producto se agregó al catálogo.")
+        except api.ApiError as error:
+            messages.error(request, error.message)
+    else:
+        messages.error(request, "Revisa los datos del producto e inténtalo de nuevo.")
+    return _admin_section_redirect("products")
+
+
+@admin_required
+@require_POST
+def admin_update_product(request, id):
+    form = AdminProductForm(request.POST, request.FILES)
+    if form.is_valid():
+        try:
+            data = _product_data(form)
+            api.update_product(id, data, request.session.get("token", ""))
+            messages.success(request, "Los cambios del producto se guardaron.")
+        except api.ApiError as error:
+            messages.error(request, error.message)
+    else:
+        messages.error(request, "Revisa los datos del producto e inténtalo de nuevo.")
+    return _admin_section_redirect("products")
+
+
+@admin_required
+@require_POST
+def admin_delete_product(request, id):
+    try:
+        api.delete_product(id, request.session.get("token", ""))
+        messages.success(request, "El producto se eliminó del catálogo.")
+    except api.ApiError as error:
+        messages.error(request, error.message)
+    return _admin_section_redirect("products")
+
+
+@admin_required
+@require_POST
+def admin_create_user(request):
+    form = AdminUserForm(request.POST, require_password=True)
+    if form.is_valid():
+        try:
+            api.create_user(form.cleaned_data, request.session.get("token", ""))
+            messages.success(request, "La cuenta se creó correctamente.")
+        except api.ApiError as error:
+            messages.error(request, error.message)
+    else:
+        messages.error(request, "Revisa los datos de la cuenta e inténtalo de nuevo.")
+    return _admin_section_redirect("users")
+
+
+@admin_required
+@require_POST
+def admin_update_user(request, id):
+    form = AdminUserForm(request.POST)
+    if form.is_valid():
+        current_user = request.session.get("user") or {}
+        if current_user.get("id") == id and form.cleaned_data["role"] != "administrador":
+            messages.error(request, "No puedes quitarte tus propios permisos de administrador.")
+            return _admin_section_redirect("users")
+        data = {key: value for key, value in form.cleaned_data.items() if key != "password" or value}
+        try:
+            updated_user = api.update_user(id, data, request.session.get("token", ""))
+            if current_user.get("id") == id and isinstance(updated_user, dict):
+                request.session["user"] = updated_user
+            messages.success(request, "Los datos de la cuenta se actualizaron.")
+        except api.ApiError as error:
+            messages.error(request, error.message)
+    else:
+        messages.error(request, "Revisa los datos de la cuenta e inténtalo de nuevo.")
+    return _admin_section_redirect("users")
+
+
+@admin_required
+@require_POST
+def admin_delete_user(request, id):
+    current_user = request.session.get("user") or {}
+    if current_user.get("id") == id:
+        messages.error(request, "No puedes eliminar tu propia cuenta mientras estás conectado.")
+        return _admin_section_redirect("users")
+    try:
+        api.delete_user(id, request.session.get("token", ""))
+        messages.success(request, "La cuenta se eliminó correctamente.")
+    except api.ApiError as error:
+        messages.error(request, error.message)
+    return _admin_section_redirect("users")
+
+
+# Autenticación de usuarios y administradores
+
+
+def login_view(request):
+    """Página de inicio de sesión minimalista para usuario o administrador."""
+    next_url = _safe_next_url(request, request.GET.get("next") or request.POST.get("next"))
+    login_failed = False
+    if request.method == "POST":
+        form = LoginForm(request.POST)
+        if form.is_valid():
+            try:
+                data = api.login(
+                    form.cleaned_data["username"],
+                    form.cleaned_data["password"],
+                )
+                if not isinstance(data, dict):
+                    raise api.ApiError("La API devolvió una respuesta inesperada al iniciar sesión.")
+                user = data.get("user")
+                token = data.get("access_token")
+                if not isinstance(user, dict) or not token:
+                    raise api.ApiError("La API devolvió una respuesta incompleta al iniciar sesión.")
+                request.session["user"] = user
+                request.session["token"] = token
+                messages.success(request, f"¡Bienvenido, {user.get('full_name') or user.get('username', 'usuario')}!")
+                if str(user.get("role", "")).lower() in {"admin", "administrador"}:
+                    return redirect("store:admin_dashboard")
+                if next_url:
+                    return redirect(next_url)
+                return redirect("store:catalog")
+            except api.ApiError as error:
+                messages.error(request, error.message)
+                login_failed = error.status_code == 401
+    else:
+        form = LoginForm()
 
     return render(
         request,
-        "store/panel/orders.html",
-        {"orders": orders, "status_form": OrderStatusForm()},
+        "auth/login.html",
+        {"form": form, "next": next_url, "login_failed": login_failed},
     )
 
 
-@require_POST
-@admin_required_session
-def order_update_status(request, id: str):
-    form = OrderStatusForm(request.POST)
-    if not form.is_valid():
-        messages.error(request, "El estado seleccionado no es válido.")
-        return redirect("store:orders")
-
-    try:
-        api.update_order_status(id, form.cleaned_data["status"])
-    except api.ApiError as error:
-        response = _handle_api_error(request, error)
-        if response:
-            return response
+def register_view(request):
+    """Página de creación de cuenta minimalista."""
+    next_url = _safe_next_url(request, request.GET.get("next") or request.POST.get("next"))
+    if request.method == "POST":
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            try:
+                api.register(
+                    {
+                        "username": form.cleaned_data["username"],
+                        "email": form.cleaned_data["email"],
+                        "full_name": form.cleaned_data["full_name"],
+                        "password": form.cleaned_data["password"],
+                    }
+                )
+                messages.success(request, "Cuenta creada exitosamente. Inicia sesión ahora.")
+                query = f"?{urlencode({'next': next_url})}" if next_url else ""
+                return redirect(f"{reverse('store:login')}{query}")
+            except api.ApiError as error:
+                messages.error(request, error.message)
     else:
-        messages.success(request, "Estado del pedido actualizado correctamente.")
-    return redirect("store:orders")
+        form = RegisterForm()
+
+    return render(
+        request,
+        "auth/register.html",
+        {"form": form, "next": next_url},
+    )
+
+
+def logout_view(request):
+    """Cierra la sesión del usuario."""
+    request.session.flush()
+    messages.info(request, "Has cerrado sesión correctamente.")
+    return redirect("store:home")
+
+
+def forgot_password_view(request):
+    """Muestra el formulario de recuperación de contraseña."""
+    if request.method == "POST":
+        form = PasswordResetRequestForm(request.POST)
+        if form.is_valid():
+            messages.success(
+                request,
+                "Si existe una cuenta con ese correo, recibirás las instrucciones pronto.",
+            )
+            return redirect("store:forgot_password")
+    else:
+        form = PasswordResetRequestForm()
+    return render(request, "auth/forgot_password.html", {"form": form})

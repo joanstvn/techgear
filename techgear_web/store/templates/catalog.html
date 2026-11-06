@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load store_tags %}
+{% load static %}
+
+{% block title %}TechGear{% endblock %}
+{% block body_class %}catalog-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/catalog.css' %}?v=20261105-mobile">{% endblock %}
+
+{% block content %}
+<section class="catalog-minimal-header">
+  <div class="container text-center">
+    <p class="eyebrow">Catálogo TechGear</p>
+    <h1 class="catalog-minimal-title">Colección <span class="text-gradient">Humanoides</span></h1>
+    <p class="catalog-minimal-subtitle">Explora nuestra serie de androides y robots de vanguardia.</p>
+  </div>
+</section>
+
+<section class="container catalog-results">
+  {% if products %}
+    {% static 'store/img/placeholder.svg' as placeholder_img %}
+    <div class="product-grid product-grid--minimal">
+      {% for product in products %}
+        <article class="product-card product-card--minimal reveal">
+          <a class="product-media product-media--vertical" href="{% url 'store:product_detail' product.id %}">
+            {% if product.image %}
+              <img src="{{ product.image }}" alt="{{ product.name }}" loading="lazy"
+                   onerror="this.onerror=null;this.src='{{ placeholder_img }}';">
+            {% else %}
+              <img src="{{ placeholder_img }}" alt="{{ product.name }}" loading="lazy">
+            {% endif %}
+          </a>
+          <div class="product-body product-body--minimal">
+            <h2 class="product-name">
+              <a href="{% url 'store:product_detail' product.id %}">{{ product.name }}</a>
+            </h2>
+            <div class="product-footer product-footer--minimal">
+              <span class="price">{{ product.price|cop_currency }}</span>
+            </div>
+            <a class="btn btn-primary btn-block" href="{% url 'store:product_detail' product.id %}">
+              Ver detalle
+              {% icon "arrow_forward" %}
+            </a>
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">
+        {% icon "search_off" %}
+      </div>
+      <h2>No encontramos productos</h2>
+      <p class="muted">El catálogo aún no tiene productos registrados.</p>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

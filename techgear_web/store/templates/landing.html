@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% load store_tags %}
+{% load static %}
+
+{% block title %}TechGear{% endblock %}
+{% block body_class %}landing-page{% endblock %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'store/css/hero-axial.css' %}?v=1.13">
+{% endblock %}
+
+{% block content %}
+<section class="hero" id="hero">
+  <div class="hand" id="hl" data-tip="0.736" aria-hidden="true"></div>
+  <div class="hand" id="hr" data-tip="0.335" aria-hidden="true"></div>
+  <div class="center">
+    <h1><span>Robots para el futuro</span>pensados para tu mundo</h1>
+    <p>Descubre robots inteligentes y asistentes diseñados para inspirarte, facilitar tu día a día y transformar grandes ideas en realidad.</p>
+    <a class="btn btn-primary" id="cta" href="{% url 'store:catalog' %}">Explorar</a>
+  </div>
+</section>
+
+<section class="scroll-hl" id="experiencia">
+  <div class="scroll-hl__container">
+    <div class="scroll-hl__left">
+      <div class="scroll-hl__heading reveal">
+      <p class="eyebrow">La experiencia TechGear</p>
+        <h2 class="scroll-hl__title">Robots pensados para tu mundo.</h2>
+      </div>
+
+      <ul class="scroll-hl__list">
+        <li class="scroll-hl__item is-active">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Robots para crear y aprender</span>
+        </li>
+        <li class="scroll-hl__item">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Asistentes para el día a día</span>
+        </li>
+        <li class="scroll-hl__item">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Tecnología intuitiva y segura</span>
+        </li>
+        <li class="scroll-hl__item">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Modelos listos para explorar</span>
+        </li>
+        <li class="scroll-hl__item">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Compra simple, soporte cercano</span>
+        </li>
+        <li class="scroll-hl__item">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Programación y control fácil</span>
+        </li>
+        <li class="scroll-hl__item">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Sensores inteligentes de precisión</span>
+        </li>
+        <li class="scroll-hl__item">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Autonomía y recarga inteligente</span>
+        </li>
+        <li class="scroll-hl__item">
+          <span class="scroll-hl__star-wrapper">
+            <svg class="scroll-hl__star" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+            </svg>
+          </span>
+          <span class="scroll-hl__text">Garantía oficial y servicio técnico</span>
+        </li>
+      </ul>
+
+      <p class="scroll-hl__description">
+        Elige un compañero inteligente para casa, estudio o trabajo. Te ayudamos a encontrar el robot ideal para cada proyecto.
+      </p>
+    </div>
+
+    <div class="scroll-hl__right">
+      <div class="scroll-hl__card reveal">
+        <div class="scroll-hl__card-header">
+          <h3 class="scroll-hl__card-title">Compra<br>verificada</h3>
+          <svg class="scroll-hl__card-star" width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z"/>
+          </svg>
+        </div>
+
+        <div class="scroll-hl__card-stats">
+          <div class="scroll-hl__card-stat">
+            <span class="scroll-hl__card-value">{{ total_products }}</span>
+            <span class="scroll-hl__card-label">productos<br>disponibles</span>
+          </div>
+          <div class="scroll-hl__card-stat">
+            <span class="scroll-hl__card-value">{{ total_categories }}</span>
+            <span class="scroll-hl__card-label">categorías<br>para elegir</span>
+          </div>
+          <div class="scroll-hl__card-stat">
+            <span class="scroll-hl__card-value">100%</span>
+            <span class="scroll-hl__card-label">garantía<br>TechGear</span>
+          </div>
+        </div>
+
+        <div class="scroll-hl__card-footer">
+          <a class="btn scroll-hl__card-cta" href="{% url 'store:catalog' %}">
+            Ver catálogo
+            {% icon "arrow_forward" %}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="catalog home-preview" id="servicios">
+  <div class="catalog__container">
+    <header class="features__header home-preview__header reveal">
+      <p class="eyebrow">Robótica para todos</p>
+      <h2 class="features__title">El futuro encuentra su lugar en casa</h2>
+      <p class="features__subtitle">
+        Descubre robots intuitivos para explorar nuevas ideas, automatizar tareas y aprender jugando.
+      </p>
+    </header>
+
+    <div class="features__card-wrapper">
+      <div class="features__grid-bento">
+        <article class="minimal-card reveal">
+          <div class="minimal-card__icon">
+            {% icon "local_shipping" %}
+          </div>
+          <h3 class="minimal-card__title">Robots para cada día</h3>
+          <p class="minimal-card__desc">Encuentra tecnología útil para casa, aula, estudio y proyectos creativos.</p>
+        </article>
+
+        <article class="minimal-card reveal">
+          <div class="minimal-card__icon">
+            {% icon "verified_user" %}
+          </div>
+          <h3 class="minimal-card__title">Diseño pensado en las personas</h3>
+          <p class="minimal-card__desc">Experiencias sencillas, controles claros y tecnología que invita a experimentar.</p>
+        </article>
+
+        <article class="minimal-card reveal">
+          <div class="minimal-card__icon">
+            {% icon "support_agent" %}
+          </div>
+          <h3 class="minimal-card__title">Asesoría especializada</h3>
+          <p class="minimal-card__desc">Te ayudamos a elegir el robot ideal según tu espacio, edad y proyecto.</p>
+        </article>
+
+        <article class="minimal-card reveal">
+          <div class="minimal-card__icon">
+            {% icon "inventory_2" %}
+          </div>
+          <h3 class="minimal-card__title">Acompañamiento cercano</h3>
+          <p class="minimal-card__desc">Resolvemos tus dudas antes y después de elegir tu nuevo compañero.</p>
+        </article>
+
+        <article class="minimal-card minimal-card--wide reveal">
+          <div class="minimal-card__icon">
+            {% icon "payments" %}
+          </div>
+          <h3 class="minimal-card__title">Tecnología lista para descubrir</h3>
+          <p class="minimal-card__desc">
+            Seleccionamos robots y dispositivos inteligentes con funciones útiles, diseño atractivo y una experiencia cercana desde el primer día.
+          </p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="featured" id="destacados">
+  <div class="featured__container">
+    <header class="featured__header reveal">
+      <div>
+        <p class="eyebrow">Destacados</p>
+        <h2 class="features__title">Lo más buscado esta semana</h2>
+      </div>
+      <a class="btn btn-secondary" href="{% url 'store:catalog' %}">
+        Ver todo
+        {% icon "arrow_forward" %}
+      </a>
+    </header>
+
+    {% if featured_products %}
+      {% static 'store/img/placeholder.svg' as placeholder_img %}
+      <div class="product-grid product-grid--minimal">
+        {% for product in featured_products %}
+          <article class="product-card product-card--minimal reveal">
+            <a class="product-media product-media--vertical" href="{% url 'store:product_detail' product.id %}">
+              {% if product.image %}
+                <img src="{{ product.image }}" alt="{{ product.name }}" loading="lazy" decoding="async"
+                     onerror="this.onerror=null;this.src='{{ placeholder_img }}';">
+              {% else %}
+                <img src="{{ placeholder_img }}" alt="{{ product.name }}" loading="lazy">
+              {% endif %}
+            </a>
+            <div class="product-body product-body--minimal">
+              <h3 class="product-name">
+                <a href="{% url 'store:product_detail' product.id %}">{{ product.name }}</a>
+              </h3>
+              <div class="product-footer product-footer--minimal">
+                <span class="price">{{ product.price|cop_currency }}</span>
+              </div>
+              <a class="btn btn-primary btn-block" href="{% url 'store:product_detail' product.id %}">
+                Ver detalle
+                {% icon "arrow_forward" %}
+              </a>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="featured__banner reveal">
+        <a class="featured__banner-link" href="{% url 'store:catalog' %}" aria-label="Explorar catálogo de robots">
+          <img class="featured__banner-img" src="{% static 'store/img/robots/hero-robot-team.webp' %}" alt="Colección de robots inteligentes TechGear" loading="lazy">
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="steps" id="proceso">
+  <div class="steps__container">
+    <header class="features__header reveal">
+        <p class="eyebrow">Así de fácil</p>
+        <h2 class="features__title">Tu nuevo robot está a 3 pasos</h2>
+      <p class="features__subtitle">
+          Elige tu favorito y nuestro equipo te acompaña hasta que esté listo para explorar contigo.
+      </p>
+    </header>
+
+    <div class="features__card-wrapper">
+      <div class="steps__grid">
+        <article class="step-card reveal">
+          <div class="step-card__top">
+            <span class="step-card__num">01</span>
+            <div class="step-card__icon">
+              {% icon "search" %}
+            </div>
+          </div>
+          <h3 class="step-card__title">Encuentra tu robot</h3>
+          <p class="step-card__desc">Explora modelos y descubre el que mejor encaja con tus ideas.</p>
+        </article>
+
+        <article class="step-card reveal">
+          <div class="step-card__top">
+            <span class="step-card__num">02</span>
+            <div class="step-card__icon">
+              {% icon "shopping_cart" %}
+            </div>
+          </div>
+          <h3 class="step-card__title">Elige tu favorito</h3>
+          <p class="step-card__desc">Consulta sus características y envía tu pedido en unos minutos.</p>
+        </article>
+
+        <article class="step-card reveal">
+          <div class="step-card__top">
+            <span class="step-card__num">03</span>
+            <div class="step-card__icon">
+              {% icon "package_2" %}
+            </div>
+          </div>
+          <h3 class="step-card__title">Empieza a explorar</h3>
+          <p class="step-card__desc">Recibe tu robot y descubre todo lo que pueden hacer juntos.</p>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* Alinea la punta de los dedos de ambas manos con el centro del botón */
+(function(){
+  var hero = document.getElementById('hero'), cta = document.getElementById('cta');
+  if (!hero || !cta) return;
+  var hands = [document.getElementById('hl'), document.getElementById('hr')].filter(Boolean);
+  function align(){
+    var h = hero.getBoundingClientRect(), b = cta.getBoundingClientRect();
+    var cy = b.top + b.height / 2 - h.top;
+    hands.forEach(function(el){
+      el.style.top = (cy - parseFloat(el.dataset.tip) * el.offsetHeight) + 'px';
+    });
+  }
+  align();
+  window.addEventListener('resize', align);
+  window.addEventListener('load', align);
+  if (document.fonts && document.fonts.ready) { document.fonts.ready.then(align); }
+})();
+</script>
+{% endblock %}

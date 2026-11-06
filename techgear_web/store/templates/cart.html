@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static store_tags %}
+
+{% block title %}TechGear{% endblock %}
+{% block body_class %}cart-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'store/css/cart.css' %}?v=5">{% endblock %}
+
+{% block content %}
+<main class="cart-shell container">
+  <header class="cart-heading"><p class="eyebrow">Tu selección</p><h1>Carrito</h1><p>Revisa los productos antes de confirmar tu pedido.</p></header>
+  {% if cart_unavailable %}
+    <section class="cart-empty"><h2>No se pudo cargar el carrito</h2><p>El servicio de productos no está disponible en este momento. Tu selección sigue guardada; vuelve a intentarlo en un momento.</p></section>
+  {% elif cart_rows %}
+    <div class="cart-layout">
+      <section class="cart-items" aria-label="Productos en el carrito">
+        {% for row in cart_rows %}
+          <article class="cart-item">
+            <a class="cart-item__image" href="{% url 'store:product_detail' row.product.id %}">{% if row.product.image %}<img src="{{ row.product.image }}" alt="{{ row.product.name }}" onerror="this.style.display='none'">{% endif %}</a>
+            <div class="cart-item__info"><a href="{% url 'store:product_detail' row.product.id %}"><h2>{{ row.product.name }}</h2></a><p>{{ row.product.category|default:"TechGear" }}</p><strong>{{ row.product.price|cop_currency }}</strong></div>
+            <div class="cart-item__quantity"><label for="quantity-{{ row.product.id }}">Cantidad</label><input id="quantity-{{ row.product.id }}" name="quantity" form="update-{{ row.product.id }}" type="number" min="1" max="{{ row.product.stock }}" value="{{ row.quantity }}"></div>
+            <div class="cart-item__subtotal"><span>Subtotal</span><strong>{{ row.subtotal|cop_currency }}</strong><div class="cart-item__actions"><form id="update-{{ row.product.id }}" method="post" action="{% url 'store:cart_update' row.product.id %}">{% csrf_token %}<button type="submit">Actualizar</button></form><form method="post" action="{% url 'store:cart_remove' row.product.id %}">{% csrf_token %}<button type="submit">Quitar</button></form></div></div>
+          </article>
+        {% endfor %}
+      </section>
+      <aside class="cart-summary"><h2>Resumen</h2><div><span>{{ cart_count }} unidad(es)</span><strong>{{ cart_total|cop_currency }}</strong></div><p>Al confirmar envías una solicitud de pedido; no se realiza ningún cobro en línea. El equipo de TechGear coordinará contigo la disponibilidad, el pago y la entrega.</p>
+        <form method="post" action="{% url 'store:cart_checkout' %}">{% csrf_token %}<button class="btn btn-primary btn-block" type="submit">Confirmar pedido</button></form>
+        {% if not request.session.user %}
+          <small>Para registrar el pedido debes <a href="{% url 'store:login' %}?next={% url 'store:cart' %}">iniciar sesión</a> o <a href="{% url 'store:register' %}?next={% url 'store:cart' %}">crear una cuenta</a>. Conservaremos tu carrito.</small>
+        {% else %}
+          <small>Pedido a nombre de {{ request.session.user.full_name|default:request.session.user.username }}.</small>
+        {% endif %}
+      </aside>
+    </div>
+  {% else %}
+    <section class="cart-empty"><span>{% icon "shopping_cart" %}</span><h2>Tu carrito está vacío</h2><p>Explora el catálogo y añade los productos que te interesan.</p><a class="btn btn-primary" href="{% url 'store:catalog' %}">Explorar catálogo</a></section>
+  {% endif %}
+</main>
+{% endblock %}
+
+{% block extra_js %}<script>
+  (() => {
+    const key = 'techgear-cart-scroll';
+    document.querySelectorAll('.cart-item__actions form:first-child').forEach((form) => {
+      form.addEventListener('submit', () => {
+        try {
+          const input = document.querySelector(`[form="${form.id}"]`);
+          sessionStorage.setItem(key, JSON.stringify({ top: window.scrollY, input: input?.id || '' }));
+        } catch (_) {}
+      });
+    });
+    try {
+      const savedState = sessionStorage.getItem(key);
+      if (savedState !== null) {
+        sessionStorage.removeItem(key);
+        const state = JSON.parse(savedState);
+        requestAnimationFrame(() => {
+          window.scrollTo(0, Number(state.top) || 0);
+          const input = state.input && document.getElementById(state.input);
+          if (input) input.focus({ preventScroll: true });
+        });
+      }
+    } catch (_) {}
+  })();
+</script>{% endblock %}
